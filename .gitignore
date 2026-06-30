@@ -1,0 +1,8 @@
+.DS_Store
+dist/
+output/
+design-qa.md
+node_modules/
+.env
+.env.*
+*.log
