@@ -21,6 +21,15 @@ const assetVersion = crypto
   .update(fs.readFileSync(path.join(root, 'src', 'app.js')))
   .digest('hex')
   .slice(0, 10);
+const googleTag = `<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-364L3NYKST"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-364L3NYKST');
+</script>`;
 
 const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const digits = '0123456789'.split('');
@@ -168,6 +177,7 @@ function layout(page, body, extraJsonLd = []) {
   return `<!doctype html>
 <html lang="en">
 <head>
+${googleTag}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(page.meta.title)}</title>
@@ -947,6 +957,8 @@ function legalPage(page, kind) {
         <p>If you email ${emailInline()}, your email address and message are used to read and respond to that message.</p>
         <h2>Local Preferences</h2>
         <p>The color theme may be stored in your browser so the page can remember your preference.</p>
+        <h2>Analytics</h2>
+        <p>Google Analytics may collect basic usage information such as page views and browser details. Text entered into the Morse tools is not sent by the tools for analytics.</p>
         <h2>Questions</h2>
         <p>For privacy questions, email ${emailAnchor()}.</p>
       ` : `
