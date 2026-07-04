@@ -58,40 +58,40 @@ export const sourceLinks = [
 
 export const pageMeta = {
   '/': {
-    title: 'Morse Code Translator, Alphabet, Sounds and Practice',
-    description: 'Use a fast Morse code translator, hear Morse sounds, browse the alphabet, and practice letters, numbers, and timing.'
+    title: 'Morse Code Translator with Alphabet, Sound and Practice',
+    description: 'Translate English and Morse code, listen to dot-dash audio, check the alphabet, and practice with beginner-friendly Morse tools.'
   },
   '/morse-code-alphabet/': {
-    title: 'Morse Code Alphabet: Letters, Numbers and Symbols',
-    description: 'See the complete Morse code alphabet with A-Z letters, numbers, punctuation, prosigns, sound playback, and copy buttons.'
+    title: 'Morse Code Alphabet: A-Z Letters, Numbers and Symbols',
+    description: 'Use the Morse code alphabet table for A-Z letters, numbers, punctuation, prosigns, sound playback, and quick copy checks.'
   },
   '/morse-code-decoder/': {
-    title: 'Morse Code Decoder: Convert Morse to English',
-    description: 'Decode Morse code into English text with examples, copy, sound playback, and clear guidance for dots, dashes, and spaces.'
+    title: 'Morse Code Decoder: Convert Dots and Dashes to English',
+    description: 'Decode Morse code into English text, fix spacing problems, test SOS and HELLO examples, and play the message as sound.'
   },
   '/english-to-morse/': {
-    title: 'English to Morse Code Translator',
-    description: 'Translate English text into Morse code instantly, copy the result, play sound, and test common examples.'
+    title: 'English to Morse Code Translator: Text to Dots and Dashes',
+    description: 'Convert English words, names, numbers, and short messages into Morse code with copy, audio playback, and plain spacing tips.'
   },
   '/learn-morse-code/': {
-    title: 'Learn Morse Code: Simple Steps and Daily Practice',
-    description: 'Learn Morse code with a practical route, letter groups, sound drills, timing rules, and links to practice tools.'
+    title: 'Learn Morse Code: Beginner Steps, Groups and Daily Drills',
+    description: 'Learn Morse code with starter letter groups, a simple daily plan, listening drills, timing rules, and practice tools.'
   },
   '/morse-code-practice/': {
     title: 'Morse Code Practice: Listening, Reading and Key Trainer',
     description: 'Practice Morse code with listening questions, visual Morse questions, tap-and-hold key input, sound feedback, and progress tracking.'
   },
   '/morse-code-meaning/': {
-    title: 'Morse Code Meaning: What Morse Code Is and How It Works',
-    description: 'Understand the meaning of Morse code, its timing rules, uses, examples, and the difference between letters and words.'
+    title: 'Morse Code Meaning: What Dots and Dashes Represent',
+    description: 'Understand what Morse code means, how dots and dashes represent text, why spacing matters, and where Morse is still used.'
   },
   '/international-morse-code/': {
-    title: 'International Morse Code Reference',
-    description: 'Review International Morse code letters, numbers, punctuation, prosigns, spacing rules, and trusted reference sources.'
+    title: 'International Morse Code Reference: Letters, Numbers and Timing',
+    description: 'Review International Morse code letters, numbers, punctuation, prosigns, timing units, spacing rules, and reference sources.'
   },
   '/morse-code-sounds/': {
-    title: 'Morse Code Sounds: Play Dots and Dashes',
-    description: 'Play Morse code sounds with speed, tone, loop, copy, and download controls for learning and practice.'
+    title: 'Morse Code Sounds: Play, Adjust and Download Dot-Dash Audio',
+    description: 'Play Morse code sounds, change WPM and tone, loop short messages, copy the code, and download practice audio as a WAV file.'
   },
   '/about/': {
     title: 'About Morse Code Alphabet',

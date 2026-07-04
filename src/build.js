@@ -24,6 +24,7 @@ const assetVersion = crypto
   .slice(0, 10);
 const stylesheetHref = `/assets/styles.css?v=${assetVersion}`;
 const appScriptHref = `/assets/app.js?v=${assetVersion}`;
+const siteLastModified = '2026-07-04';
 const googleAnalyticsId = 'G-364L3NYKST';
 const analyticsCode = transformSync(`
   window.dataLayer = window.dataLayer || [];
@@ -269,12 +270,21 @@ function breadcrumb(route, label) {
 }
 
 function jsonLd(page, extra = []) {
+  const organization = {
+    '@type': 'Organization',
+    '@id': `${SITE.url}/#organization`,
+    name: SITE.name,
+    url: `${SITE.url}/`
+  };
   const graph = [
+    organization,
     {
       '@type': 'WebSite',
       '@id': `${SITE.url}/#website`,
       url: `${SITE.url}/`,
-      name: SITE.name
+      name: SITE.name,
+      publisher: { '@id': `${SITE.url}/#organization` },
+      inLanguage: 'en'
     },
     {
       '@type': 'WebPage',
@@ -282,7 +292,10 @@ function jsonLd(page, extra = []) {
       url: canonical(page.route),
       name: page.meta.title,
       description: page.meta.description,
-      isPartOf: { '@id': `${SITE.url}/#website` }
+      isPartOf: { '@id': `${SITE.url}/#website` },
+      publisher: { '@id': `${SITE.url}/#organization` },
+      dateModified: page.updatedAt || siteLastModified,
+      inLanguage: 'en'
     },
     ...extra
   ];
@@ -756,16 +769,47 @@ function homeSteps() {
   `;
 }
 
+function homeToolGuide() {
+  return `
+    <section class="section columns">
+      <div>
+        <h2>Which Morse Code Tool Should You Use?</h2>
+        <p>If you already have dots and dashes, start with the Morse code decoder. If you have ordinary text, use the English to Morse translator. When you are learning the code, keep the alphabet and sound pages open so you can check both the written pattern and the rhythm.</p>
+        <p>This matters because Morse is not just a visual code. A message can look correct on screen but still be hard to understand by ear if the spaces between letters and words are unclear.</p>
+      </div>
+      <div>
+        <h2>Common Things People Check</h2>
+        <p>Most visitors use this site for short practical checks: SOS, names, call signs, simple greetings, numbers, punctuation, and beginner listening practice. Longer messages work too, but they are easier to read when words are separated with slashes.</p>
+        <p>For exact operating rules, use the source page and compare the result with recognized International Morse code references.</p>
+      </div>
+    </section>
+  `;
+}
+
 function homePage(page) {
   const body = `
     ${hero(page, 'Translate text to Morse code and Morse code to text instantly. Listen to the sound, copy, and share with ease.', converterCard({ id: 'home-converter', title: 'Morse Code Translator' }))}
     ${homeFeatureTiles()}
+    ${homeToolGuide()}
     ${homeAlphabetPreview()}
     ${homeBenefits()}
     ${homeSteps()}
     ${faq(commonFaq)}
   `;
   return layout(page, body, [{ '@type': 'WebApplication', name: 'Morse Code Translator', applicationCategory: 'UtilitiesApplication', operatingSystem: 'Any' }]);
+}
+
+function exampleTable(headers, rows) {
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell.code ? `<code>${escapeHtml(cell.text)}</code>` : escapeHtml(cell.text)}</td>`).join('')}</tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 function toolPage(page, mode) {
@@ -789,6 +833,15 @@ function toolPage(page, mode) {
       ['Long signals', 'Replace long dash characters with a normal hyphen if a pasted message looks unusual.'],
       ['Fast checking', 'Use the alphabet page when you want to verify one pattern manually.']
     ],
+    examplesTitle: 'Morse Code Decoder Examples',
+    examplesIntro: 'Use these examples to check spacing before decoding your own message. One space separates letters; a slash separates words.',
+    examples: [
+      [{ text: '... --- ...', code: true }, { text: 'SOS', code: true }, { text: 'The classic distress example.' }],
+      [{ text: '.... . .-.. .-.. ---', code: true }, { text: 'HELLO', code: true }, { text: 'Each letter is separated by one space.' }],
+      [{ text: '.... . .-.. .--. / -- .', code: true }, { text: 'HELP ME', code: true }, { text: 'The slash keeps the two words apart.' }]
+    ],
+    adviceTitle: 'Before You Decode a Pasted Message',
+    adviceText: 'Clean up copied Morse before judging the result. Replace fancy dash characters with normal hyphens, keep dots as periods, and add spaces if every signal is stuck together. Most decoding mistakes come from spacing, not from the alphabet itself.',
     faq: [
       { q: 'What does a slash mean in Morse code?', a: 'A slash is commonly used in text form to show a word break.' },
       { q: 'Why do I see a question mark in the decoded result?', a: 'One group was not recognized as a standard Morse pattern. Most problems come from missing spaces between letters.' },
@@ -818,6 +871,15 @@ function toolPage(page, mode) {
       ['73', 'A short numeric example often used in amateur radio contexts.'],
       ['MORSE CODE', 'A two-word message that shows why slashes matter in copied output.']
     ],
+    examplesTitle: 'English to Morse Examples',
+    examplesIntro: 'These examples show how letters, words, and numbers are written after conversion.',
+    examples: [
+      [{ text: 'HELLO', code: true }, { text: '.... . .-.. .-.. ---', code: true }, { text: 'A simple first test word.' }],
+      [{ text: 'MORSE CODE', code: true }, { text: '-- --- .-. ... . / -.-. --- -.. .', code: true }, { text: 'The slash marks the word break.' }],
+      [{ text: '73', code: true }, { text: '--... ...--', code: true }, { text: 'A short number example.' }]
+    ],
+    adviceTitle: 'What Makes a Clean Morse Result?',
+    adviceText: 'Use short plain-text messages when possible. Names, numbers, call signs, and simple sentences convert cleanly. Emojis and unsupported symbols are skipped so the output stays readable instead of filling the result with noise.',
     faq: [
       { q: 'Can English punctuation be converted?', a: 'Common punctuation such as periods, commas, question marks, and slashes can be converted.' },
       { q: 'Why are there slashes in the Morse result?', a: 'A slash marks a word break so copied Morse stays readable in plain text.' },
@@ -854,6 +916,17 @@ function toolPage(page, mode) {
         ${guide.extraCards.map(([title, desc]) => `<article class="info-card"><strong>${title}</strong><span>${desc}</span></article>`).join('')}
       </div>
     </section>
+    <section class="section columns">
+      <div>
+        <h2>${guide.examplesTitle}</h2>
+        <p>${guide.examplesIntro}</p>
+        ${exampleTable(['Input', 'Result', 'Note'], guide.examples)}
+      </div>
+      <div>
+        <h2>${guide.adviceTitle}</h2>
+        <p>${guide.adviceText}</p>
+      </div>
+    </section>
     ${related(guide.related)}
     ${faq(guide.faq)}
   `;
@@ -863,6 +936,23 @@ function toolPage(page, mode) {
 function alphabetPage(page) {
   const body = `
     ${hero(page, 'Browse letters, numbers, punctuation, and prosigns. Click any item to play or copy its Morse code.')}
+    <section class="section columns">
+      <div>
+        <h2>How to Read the Morse Code Alphabet</h2>
+        <p>Every character has its own dot-and-dash pattern. A dot is the short mark, and a dash is the long mark. For example, A is <code>.-</code>, N is <code>-.</code>, S is <code>...</code>, and O is <code>---</code>.</p>
+        <p>When you copy a word in Morse, keep one space between character patterns. When you copy a sentence, use a slash between words so the message can be decoded later.</p>
+      </div>
+      <div>
+        <h2>Quick Characters People Often Check</h2>
+        ${exampleTable(['Character', 'Morse code', 'Why it matters'], [
+          [{ text: 'A', code: true }, { text: '.-', code: true }, { text: 'A common starter letter and the opposite of N.' }],
+          [{ text: 'E', code: true }, { text: '.', code: true }, { text: 'The shortest Morse character.' }],
+          [{ text: 'T', code: true }, { text: '-', code: true }, { text: 'The shortest dash character.' }],
+          [{ text: 'S', code: true }, { text: '...', code: true }, { text: 'Used twice in SOS.' }],
+          [{ text: 'O', code: true }, { text: '---', code: true }, { text: 'The middle letter in SOS.' }]
+        ])}
+      </div>
+    </section>
     <section class="section">
       <label class="search-label" for="alphabet-search">Search the alphabet</label>
       <input id="alphabet-search" class="search-input" type="search" data-alphabet-search placeholder="Search A, 7, question mark, SOS...">
@@ -905,6 +995,17 @@ function meaningPage(page) {
         <article class="info-card"><strong>Word space</strong><span>A longer pause, often written as a slash in text.</span></article>
       </div>
     </section>
+    <section class="section columns">
+      <div>
+        <h2>What Morse Code Is Not</h2>
+        <p>Morse code is not a secret language or encryption by itself. Anyone who knows the alphabet can read it. It is better to think of Morse as a compact way to send text through sound, light, radio, tapping, or written dots and dashes.</p>
+        <p>That is why spacing is part of the message. Without pauses, a row of dots and dashes can be hard to split back into letters.</p>
+      </div>
+      <div>
+        <h2>Where Morse Code Still Shows Up</h2>
+        <p>Morse is still used by hobbyists, amateur radio operators, teachers, puzzle makers, emergency-signaling learners, and people who enjoy compact codes. Many people also look it up for short messages such as SOS, names, initials, and simple phrases.</p>
+      </div>
+    </section>
     ${related([
       { href: '/morse-code-alphabet/', label: 'Morse Code Alphabet', desc: 'See every character.' },
       { href: '/international-morse-code/', label: 'International Morse Code', desc: 'Review standard signs.' },
@@ -944,6 +1045,17 @@ function internationalPage(page) {
       <h2>Timing Units</h2>
       <p>A dot is one unit. A dash is three units. The gap inside a character is one unit. The gap between letters is three units. The gap between words is seven units.</p>
     </section>
+    <section class="section columns">
+      <div>
+        <h2>International Morse vs. Other Morse Systems</h2>
+        <p>Most modern learning material uses International Morse code. Older American Morse code used different timing and some different character patterns, so it can confuse beginners who are comparing old charts with modern references.</p>
+        <p>For normal web lookups, amateur radio learning, classroom exercises, and puzzle checks, International Morse is the version people usually mean.</p>
+      </div>
+      <div>
+        <h2>Reference Notes</h2>
+        <p>The table on this page is meant as a standard reference, not a second copy of the full alphabet page. Use it when you need the categories, timing units, and prosigns together. Use the alphabet page when you want to play or copy individual characters quickly.</p>
+      </div>
+    </section>
     ${related([
       { href: '/morse-code-alphabet/', label: 'Alphabet table', desc: 'Interactive character cards.' },
       { href: '/morse-code-sounds/', label: 'Sound player', desc: 'Hear timing differences.' },
@@ -978,6 +1090,21 @@ function soundsPage(page) {
       <div>
         <h2>Good Practice Settings</h2>
         <p>Beginners often start around 12-16 WPM with a comfortable tone. Increase speed only after the patterns feel familiar.</p>
+      </div>
+    </section>
+    <section class="section columns">
+      <div>
+        <h2>How to Choose WPM and Tone</h2>
+        <p>Use a slower WPM when you are still learning the alphabet. If every character sounds like a blur, lower the speed before trying to memorize more letters. A mid-range tone is usually easier for longer sessions than a very sharp beep.</p>
+        <p>Once you can recognize short words without counting dots, raise the speed a little and repeat the same message again.</p>
+      </div>
+      <div>
+        <h2>Good Messages for Sound Practice</h2>
+        ${exampleTable(['Message', 'Morse code', 'Practice purpose'], [
+          [{ text: 'SOS', code: true }, { text: '... --- ...', code: true }, { text: 'Hear short and long groups clearly.' }],
+          [{ text: 'ETIMAN', code: true }, { text: '. - .. -- .- -.', code: true }, { text: 'Practice beginner letter groups.' }],
+          [{ text: 'CQ CQ', code: true }, { text: '-.-. --.- / -.-. --.-', code: true }, { text: 'Hear a radio-style repeated call.' }]
+        ])}
       </div>
     </section>
     ${related([
@@ -1020,6 +1147,25 @@ function learnPage(page) {
         <a class="button primary" href="/morse-code-practice/">Open practice trainer</a>
       </div>
     </section>
+    <section class="section columns">
+      <div>
+        <h2>Seven-Day Starter Plan</h2>
+        ${exampleTable(['Day', 'Focus', 'Small goal'], [
+          [{ text: '1' }, { text: 'E, T, I, M' }, { text: 'Hear the difference between one signal and two signals.' }],
+          [{ text: '2' }, { text: 'A, N, S, O' }, { text: 'Compare opposite patterns without counting every mark.' }],
+          [{ text: '3' }, { text: 'Short words' }, { text: 'Try ME, TO, AS, NO, SON, and MAN.' }],
+          [{ text: '4' }, { text: 'Numbers' }, { text: 'Practice 1, 2, 3, 7, 8, 9, and 0 slowly.' }],
+          [{ text: '5' }, { text: 'Sound only' }, { text: 'Listen first, then check the alphabet.' }],
+          [{ text: '6' }, { text: 'Mixed review' }, { text: 'Mix letters, numbers, and one slash between words.' }],
+          [{ text: '7' }, { text: 'Short message' }, { text: 'Translate and play a short phrase you can recognize.' }]
+        ])}
+      </div>
+      <div>
+        <h2>The Mistake Beginners Make</h2>
+        <p>Many people try to learn Morse code by staring at dots and dashes like a chart. That works for quick lookup, but it is slow for real recognition. Spend part of each session listening to the sound so the pattern becomes a rhythm.</p>
+        <p>Do not rush through all 26 letters at once. A small group that you can recognize confidently is more useful than a full alphabet you have to count every time.</p>
+      </div>
+    </section>
     ${related([
       { href: '/morse-code-alphabet/', label: 'Alphabet', desc: 'Check every character.' },
       { href: '/morse-code-practice/', label: 'Practice', desc: 'Use quizzes.' },
@@ -1056,6 +1202,22 @@ function practicePage(page) {
         <p>Use the key trainer slowly at first. A short press becomes a dot, a longer press becomes a dash, and the decoded text updates as your spacing improves.</p>
       </div>
     </section>
+    <section class="section columns">
+      <div>
+        <h2>Ten-Minute Practice Routine</h2>
+        ${exampleTable(['Minute', 'Drill', 'Goal'], [
+          [{ text: '0-2' }, { text: 'Read mode' }, { text: 'Warm up with easy letters such as E, T, I, and M.' }],
+          [{ text: '2-5' }, { text: 'Listen mode' }, { text: 'Answer by sound before looking at the written code.' }],
+          [{ text: '5-8' }, { text: 'Key practice' }, { text: 'Tap short and long presses until spacing feels steady.' }],
+          [{ text: '8-10' }, { text: 'Review misses' }, { text: 'Open the alphabet page for any pattern you missed twice.' }]
+        ])}
+      </div>
+      <div>
+        <h2>When to Make Practice Harder</h2>
+        <p>Raise the WPM only after you can answer a small set of characters without counting. If your score drops sharply, keep the same speed and mix fewer letters for a session.</p>
+        <p>The goal is steady recognition. Fast guessing is less useful than hearing a pattern and knowing the character immediately.</p>
+      </div>
+    </section>
     ${related([
       { href: '/learn-morse-code/', label: 'Learn Morse Code', desc: 'Use a structured path.' },
       { href: '/morse-code-sounds/', label: 'Morse Code Sounds', desc: 'Change speed and tone.' },
@@ -1082,6 +1244,35 @@ function sourcesPage(page) {
       <div>
         <h2>What We Verify</h2>
         <p>Letters, numbers, selected punctuation, prosigns, and timing guidance are checked against recognized Morse code references before being summarized in plain language.</p>
+      </div>
+    </section>
+    <section class="section columns">
+      <div>
+        <h2>Why This Page Exists</h2>
+        <p>Morse code pages are easy to copy, but copied charts can carry small mistakes for years. This source page keeps the reference trail visible so readers can check where the alphabet, timing notes, and learning context came from.</p>
+      </div>
+      <div>
+        <h2>How to Use These Sources</h2>
+        <p>Use the ITU recommendation when exact International Morse code characters matter. Use ARRL material for amateur radio learning context. Use Britannica for a broad historical explanation when you need a plain overview.</p>
+      </div>
+    </section>
+    <section class="section">
+      <h2>Reference Checklist</h2>
+      ${exampleTable(['What is checked', 'Primary reference', 'Where it affects the site'], [
+        [{ text: 'Letters and numbers' }, { text: 'ITU recommendation' }, { text: 'Alphabet, decoder, translator, and practice pages.' }],
+        [{ text: 'Punctuation and prosigns' }, { text: 'ITU recommendation' }, { text: 'International reference and alphabet tables.' }],
+        [{ text: 'Learning context' }, { text: 'ARRL resources' }, { text: 'Beginner drills, sound practice, and daily learning notes.' }],
+        [{ text: 'Historical overview' }, { text: 'Britannica' }, { text: 'Meaning page and plain-language background.' }]
+      ])}
+    </section>
+    <section class="section columns">
+      <div>
+        <h2>Update Habit</h2>
+        <p>When a page on this site explains a character, timing rule, or beginner drill, the goal is to keep the explanation short but traceable. If a reference changes, the affected page should be updated instead of adding another near-duplicate article.</p>
+      </div>
+      <div>
+        <h2>What Is Not Covered</h2>
+        <p>This source list is not a full radio operating manual. It supports the web tools and beginner reference pages on this site, so advanced operating procedures should still be checked against the relevant standard or instructor.</p>
       </div>
     </section>
     <section class="section">
@@ -1189,9 +1380,9 @@ const basePages = [
     ]
   }) },
   { route: '/privacy-policy/', h1: 'Privacy Policy', navLabel: 'Privacy Policy', meta: pageMeta['/privacy-policy/'], indexable: false, render: (page) => legalPage(page, 'privacy') },
-  { route: '/terms/', h1: 'Terms of Use', navLabel: 'Terms', meta: pageMeta['/terms/'], render: (page) => legalPage(page, 'terms') },
+  { route: '/terms/', h1: 'Terms of Use', navLabel: 'Terms', meta: pageMeta['/terms/'], indexable: false, render: (page) => legalPage(page, 'terms') },
   { route: '/sources/', h1: 'Morse Code Sources', navLabel: 'Sources', meta: pageMeta['/sources/'], render: sourcesPage },
-  { route: '/sitemap/', h1: 'Sitemap', navLabel: 'Sitemap', meta: pageMeta['/sitemap/'], render: sitemapPage }
+  { route: '/sitemap/', h1: 'Sitemap', navLabel: 'Sitemap', meta: pageMeta['/sitemap/'], indexable: false, render: sitemapPage }
 ];
 
 const allPages = [...basePages];
@@ -1247,8 +1438,13 @@ function copyAssets() {
 }
 
 function writeRobotsAndSitemaps() {
-  const sitemapPages = allPages.filter((page) => page.indexable !== false);
-  const urls = sitemapPages.map((page) => `  <url><loc>${canonical(page.route)}</loc></url>`).join('\n');
+  const sitemapPages = allPages.filter((page) => page.indexable !== false && page.inSitemap !== false);
+  const urls = sitemapPages.map((page) => [
+    '  <url>',
+    `    <loc>${canonical(page.route)}</loc>`,
+    `    <lastmod>${page.updatedAt || siteLastModified}</lastmod>`,
+    '  </url>'
+  ].join('\n')).join('\n');
   fs.writeFileSync(path.join(dist, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);
   fs.writeFileSync(path.join(dist, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE.url}/sitemap.xml\n`);
   fs.writeFileSync(path.join(dist, 'llms.txt'), llmsText());
