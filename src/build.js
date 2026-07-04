@@ -470,7 +470,7 @@ function converterCard({ id, mode = 'text-to-morse', title = 'Morse Code Transla
       <div class="translator-grid">
         <div class="translator-panel">
           <label class="field-label" for="${id}-input" data-source-label>${isDecode ? 'Morse Code' : 'Text'}</label>
-          <textarea id="${id}-input" data-input rows="6" maxlength="1200" placeholder="${isDecode ? 'Paste Morse code such as ... --- ...' : 'Type your text here...'}"></textarea>
+          <textarea id="${id}-input" data-input rows="6" maxlength="1200" placeholder="${isDecode ? 'Morse code will appear here.' : 'English text will appear here.'}"></textarea>
           <div class="panel-footer">
             <span data-count>0 / 1200</span>
             <button class="button ghost small" type="button" data-clear>Clear</button>

@@ -575,6 +575,10 @@ textarea:focus,
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
+textarea:focus::placeholder {
+  color: transparent;
+}
+
 .translator-panel textarea,
 .translator-panel .result-box {
   min-height: 156px;

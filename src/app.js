@@ -14,6 +14,14 @@
   let stopPlayback = false;
   let heldTone;
   let heldToneRequest = 0;
+  const emptyResultText = {
+    'text-to-morse': 'Morse code will appear here.',
+    'morse-to-text': 'English text will appear here.'
+  };
+  const inputPlaceholderText = {
+    'text-to-morse': 'English text will appear here.',
+    'morse-to-text': 'Morse code will appear here.'
+  };
 
   function setTheme(theme, animate = false) {
     if (animate) {
@@ -243,7 +251,7 @@
       function setMode(next) {
         mode = next;
         card.querySelectorAll('[data-mode]').forEach((button) => button.classList.toggle('active', button.dataset.mode === mode));
-        input.placeholder = mode === 'morse-to-text' ? 'Paste Morse code such as ... --- ...' : 'Type your text here...';
+        input.placeholder = inputPlaceholderText[mode];
         if (sourceLabel) sourceLabel.textContent = mode === 'morse-to-text' ? 'Morse Code' : 'Text';
         if (resultLabel) resultLabel.textContent = mode === 'morse-to-text' ? 'Text' : 'Morse Code';
         update();
@@ -254,7 +262,7 @@
         if (count) count.textContent = `${value.length} / ${input.maxLength || 1200}`;
         error.hidden = true;
         if (!value.trim()) {
-          output.textContent = mode === 'morse-to-text' ? 'English text will appear here.' : 'Morse code will appear here.';
+          output.textContent = emptyResultText[mode];
           return;
         }
         if (mode === 'morse-to-text') {
@@ -275,7 +283,8 @@
       card.querySelector('[data-copy]')?.addEventListener('click', (event) => copyText(output.textContent.trim(), event.currentTarget));
       card.querySelector('[data-clear]')?.addEventListener('click', () => { input.value = ''; update(); input.focus(); });
       card.querySelector('[data-swap]')?.addEventListener('click', () => {
-        input.value = output.textContent.trim();
+        const nextInput = output.textContent.trim();
+        input.value = Object.values(emptyResultText).includes(nextInput) ? '' : nextInput;
         setMode(mode === 'morse-to-text' ? 'text-to-morse' : 'morse-to-text');
       });
       card.querySelector('[data-play]')?.addEventListener('click', () => {
