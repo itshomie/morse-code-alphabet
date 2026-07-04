@@ -70,54 +70,6 @@ body::selection {
   background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
-.ambient-field {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-  contain: layout style paint;
-}
-
-.ambient-mark {
-  position: absolute;
-  color: color-mix(in srgb, var(--accent) 24%, transparent);
-  font-family: var(--mono);
-  font-weight: 900;
-  font-size: clamp(1.1rem, 1.8vw, 2rem);
-  opacity: 0.52;
-  transform: translate3d(
-    calc((var(--cursor-x, 50vw) - 50vw) * var(--depth, 0.015)),
-    calc((var(--cursor-y, 50vh) - 50vh) * var(--depth, 0.015)),
-    0
-  );
-  animation: ambientDrift var(--speed, 12s) ease-in-out infinite alternate;
-}
-
-:root[data-theme="dark"] .ambient-mark {
-  color: color-mix(in srgb, var(--accent) 28%, transparent);
-  opacity: 0.36;
-}
-
-.mark-1 { top: 12%; left: 7%; --depth: -0.018; --speed: 13s; }
-.mark-2 { top: 19%; left: 84%; --depth: 0.024; --speed: 11s; }
-.mark-3 { top: 35%; left: 14%; --depth: 0.018; --speed: 15s; }
-.mark-4 { top: 42%; left: 74%; --depth: -0.02; --speed: 12s; }
-.mark-5 { top: 58%; left: 6%; --depth: 0.026; --speed: 14s; }
-.mark-6 { top: 67%; left: 88%; --depth: -0.016; --speed: 16s; }
-.mark-7 { top: 78%; left: 24%; --depth: 0.018; --speed: 13s; }
-.mark-8 { top: 91%; left: 70%; --depth: -0.024; --speed: 17s; }
-.mark-9 { top: 26%; left: 48%; --depth: 0.014; --speed: 18s; }
-.mark-10 { top: 52%; left: 42%; --depth: -0.018; --speed: 15s; }
-.mark-11 { top: 73%; left: 53%; --depth: 0.02; --speed: 12s; }
-.mark-12 { top: 8%; left: 58%; --depth: -0.016; --speed: 16s; }
-.mark-13 { top: 88%; left: 9%; --depth: 0.022; --speed: 14s; }
-.mark-14 { top: 31%; left: 93%; --depth: 0.012; --speed: 19s; }
-.mark-15 { top: 64%; left: 34%; --depth: -0.021; --speed: 12s; }
-.mark-16 { top: 15%; left: 29%; --depth: 0.017; --speed: 17s; }
-.mark-17 { top: 49%; left: 94%; --depth: 0.023; --speed: 14s; }
-.mark-18 { top: 84%; left: 43%; --depth: -0.014; --speed: 20s; }
-
 a { color: inherit; text-decoration: none; }
 a:hover { color: var(--accent); }
 button, input, textarea { font: inherit; }
@@ -1466,12 +1418,6 @@ input[type="range"] {
 @keyframes wavePulse {
   0%, 100% { transform: scaleY(0.72); opacity: 0.5; }
   45% { transform: scaleY(1); opacity: 1; }
-}
-
-@keyframes ambientDrift {
-  from { margin-top: -10px; opacity: 0.32; }
-  50% { opacity: 0.6; }
-  to { margin-top: 16px; opacity: 0.44; }
 }
 
 @keyframes themeWash {

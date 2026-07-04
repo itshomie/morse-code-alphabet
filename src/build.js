@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
+import { transformSync } from 'esbuild';
 import {
   SITE,
   MORSE,
@@ -21,15 +22,160 @@ const assetVersion = crypto
   .update(fs.readFileSync(path.join(root, 'src', 'app.js')))
   .digest('hex')
   .slice(0, 10);
-const googleTag = `<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-364L3NYKST"></script>
-<script>
+const stylesheetHref = `/assets/styles.css?v=${assetVersion}`;
+const appScriptHref = `/assets/app.js?v=${assetVersion}`;
+const googleAnalyticsId = 'G-364L3NYKST';
+const analyticsCode = transformSync(`
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-364L3NYKST');
-</script>`;
+  (() => {
+    let loaded = false;
+    const loadAnalytics = () => {
+      if (loaded) return;
+      loaded = true;
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = 'https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}';
+      document.head.append(script);
+      gtag('js', new Date());
+      gtag('config', '${googleAnalyticsId}');
+    };
+    const earlyEvents = ['pointerdown', 'keydown'];
+    earlyEvents.forEach((name) => window.addEventListener(name, loadAnalytics, { once: true, passive: true }));
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') loadAnalytics();
+    }, { once: true });
+    window.addEventListener('load', () => window.setTimeout(loadAnalytics, 4200), { once: true });
+  })();
+`, { loader: 'js', minify: true, target: 'es2019', legalComments: 'none' }).code.trim();
+const analyticsTag = `<script>${analyticsCode}</script>`;
+const criticalCss = transformSync(`
+  :root {
+    color-scheme: light;
+    --bg: #f7f9fd;
+    --surface: #ffffff;
+    --surface-soft: #fbfcff;
+    --text: #06163f;
+    --muted: #5d6b85;
+    --line: #dfe6f0;
+    --line-strong: #c9d4e4;
+    --accent: #1768d8;
+    --accent-dark: #08295f;
+    --accent-soft: #edf4ff;
+    --swap-bg: #08295f;
+    --swap-text: #ffffff;
+    --swap-ring: rgba(23, 104, 216, 0.18);
+    --radius: 8px;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0a101b;
+    --surface: #141f30;
+    --surface-soft: #101928;
+    --text: #eff5ff;
+    --muted: #b2bfd2;
+    --line: #2d3d55;
+    --line-strong: #425773;
+    --accent: #8db9ff;
+    --accent-dark: #d7e6ff;
+    --accent-soft: #1b2e4b;
+    --swap-bg: #18243a;
+    --swap-text: #d7e6ff;
+    --swap-ring: rgba(141, 185, 255, 0.22);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    color: var(--text);
+    background: linear-gradient(180deg, rgba(231, 238, 248, 0.76), rgba(255, 255, 255, 0) 430px), var(--bg);
+    line-height: 1.55;
+    text-rendering: optimizeLegibility;
+  }
+  :root[data-theme="dark"] body {
+    background: linear-gradient(180deg, rgba(33, 48, 72, 0.72), rgba(10, 16, 27, 0) 460px), var(--bg);
+  }
+  a { color: inherit; text-decoration: none; }
+  button, input, textarea { font: inherit; }
+  main { width: min(1240px, calc(100% - 40px)); margin: 0 auto; }
+  .skip-link { position: absolute; left: 12px; top: -48px; z-index: 20; background: var(--accent-dark); color: white; padding: 10px 14px; border-radius: var(--radius); }
+  .skip-link:focus { top: 12px; }
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    min-height: 74px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 28px;
+    padding: 0 max(24px, calc((100vw - 1240px) / 2));
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter: blur(18px);
+  }
+  .brand, .footer-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 850; letter-spacing: 0; }
+  .brand-signal { display: inline-grid; grid-auto-flow: column; align-items: center; gap: 4px; }
+  .brand-signal i, .brand-signal b { display: block; height: 5px; border-radius: 999px; background: var(--accent); }
+  .brand-signal i { width: 5px; }
+  .brand-signal b { width: 18px; }
+  .main-nav { justify-self: center; display: flex; align-items: center; gap: clamp(18px, 3vw, 46px); font-size: 0.94rem; font-weight: 760; }
+  .main-nav a { padding: 26px 0; }
+  .icon-button { min-width: 48px; height: 38px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 0.78rem; font-weight: 800; }
+  .hero { padding: 22px 0 30px; }
+  .hero-top { position: relative; display: grid; place-items: center; min-height: clamp(290px, 29vw, 440px); overflow: hidden; isolation: isolate; }
+  .hero-copy { position: relative; z-index: 2; display: grid; justify-items: center; max-width: 980px; margin: 0 auto; text-align: center; }
+  .hero-copy h1 { max-width: 720px; margin: 0; font-size: clamp(3.4rem, 7vw, 6.2rem); line-height: 0.96; letter-spacing: 0; }
+  .hero-copy p { max-width: 620px; margin: 16px 0 0; color: var(--text); font-size: clamp(1rem, 1.55vw, 1.22rem); }
+  .trust-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 28px; margin-top: 18px; color: var(--accent-dark); font-size: 0.92rem; font-weight: 820; }
+  .hero-wave { position: absolute; inset: 0; z-index: 1; min-height: 100%; display: flex; align-items: center; justify-content: center; gap: clamp(10px, 1.25vw, 18px); opacity: 0.46; pointer-events: none; transform: scale(1.68); }
+  .hero-wave i, .hero-wave .wave-dot, .hero-wave .wave-dash { display: block; border-radius: 999px; background: color-mix(in srgb, var(--accent) 52%, var(--line)); }
+  .hero-wave i { width: clamp(5px, 0.55vw, 8px); height: calc(var(--h) * 1.55); background: color-mix(in srgb, var(--accent) 22%, var(--line)); }
+  .hero-wave .wave-dot { width: clamp(18px, 1.9vw, 28px); height: clamp(18px, 1.9vw, 28px); }
+  .hero-wave .wave-dash { width: clamp(86px, 8vw, 132px); height: clamp(14px, 1.2vw, 21px); background: var(--accent); }
+  .hero-tool { margin-top: -60px; position: relative; z-index: 3; }
+  .tool-card { border: 1px solid var(--line); border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 94%, transparent); padding: clamp(20px, 3vw, 28px); }
+  .translator-toolbar { display: flex; align-items: start; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+  .translator-toolbar h2 { margin: 0; font-size: 1.2rem; line-height: 1.2; }
+  .translator-toolbar p { margin: 7px 0 0; color: var(--muted); }
+  .segmented { display: grid; grid-template-columns: 1fr 1fr; min-width: min(100%, 340px); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface-soft); }
+  .segmented button { border: 0; padding: 11px 12px; background: transparent; color: var(--text); font-weight: 820; }
+  .segmented button.active { background: var(--accent); color: white; }
+  .translator-grid { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 52px minmax(0, 1fr); gap: 22px; align-items: center; }
+  .translator-panel { display: grid; gap: 8px; }
+  .field-label { display: block; color: var(--accent-dark); font-weight: 850; font-size: 0.86rem; letter-spacing: 0; }
+  textarea, .result-box { width: 100%; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface-soft); color: var(--text); padding: 16px; }
+  textarea { resize: vertical; outline: none; }
+  .translator-panel textarea, .translator-panel .result-box { min-height: 156px; }
+  .result-box { display: block; font-family: var(--mono); font-size: 1.05rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .panel-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 38px; color: var(--muted); font-size: 0.9rem; }
+  .panel-actions { justify-content: flex-end; flex-wrap: wrap; }
+  .button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--text); font-weight: 820; }
+  .button.small { min-height: 36px; padding: 0 13px; font-size: 0.88rem; }
+  .swap-button { width: 52px; height: 52px; border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line)); border-radius: 999px; background: var(--swap-bg); color: var(--swap-text); font-size: 0; box-shadow: 0 0 0 12px var(--swap-ring), 0 14px 28px rgba(6, 22, 63, 0.16); }
+  .swap-button::before { content: "<>"; font-size: 1.05rem; font-weight: 900; letter-spacing: 0; }
+  @media (max-width: 860px) {
+    main { width: min(100% - 24px, 720px); }
+    .site-header { grid-template-columns: 1fr auto; gap: 12px; padding: 12px; }
+    .main-nav { grid-column: 1 / -1; justify-self: stretch; overflow-x: auto; gap: 18px; padding-bottom: 2px; }
+    .main-nav a { padding: 4px 0 8px; }
+    .hero-top { min-height: clamp(360px, 90vw, 430px); }
+    .hero-wave { inset: 0 -18%; opacity: 0.34; transform: scale(1.22); }
+    .hero-tool { margin-top: -34px; }
+    .translator-grid { grid-template-columns: 1fr; }
+    .translator-toolbar { display: block; }
+    .segmented { margin-top: 14px; width: 100%; }
+    .swap-button { justify-self: center; transform: rotate(90deg); }
+  }
+  @media (max-width: 520px) {
+    body { background: var(--bg); }
+    .brand span:last-child { max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hero-copy h1 { font-size: clamp(2.85rem, 14vw, 4.4rem); }
+    .translator-panel textarea, .translator-panel .result-box { min-height: 132px; }
+  }
+`, { loader: 'css', minify: true, legalComments: 'none' }).code.trim();
 
 const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const digits = '0123456789'.split('');
@@ -57,7 +203,7 @@ function ensureDir(file) {
 function write(route, html) {
   const file = routeToFile(route);
   ensureDir(file);
-  fs.writeFileSync(file, html);
+  fs.writeFileSync(file, minifyHtml(html));
 }
 
 function linkList(items, className = 'link-list') {
@@ -172,12 +318,19 @@ function jsonLd(page, extra = []) {
   return `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': graph })}</script>`;
 }
 
+function minifyHtml(html) {
+  return html
+    .replace(/>\s+</g, '><')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+$/gm, '')
+    .trim();
+}
+
 function layout(page, body, extraJsonLd = []) {
   const themeColor = '#f7f9fd';
   return `<!doctype html>
 <html lang="en">
 <head>
-${googleTag}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(page.meta.title)}</title>
@@ -192,13 +345,13 @@ ${googleTag}
   <meta property="og:site_name" content="${SITE.name}">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/assets/styles.css?v=${assetVersion}">
+  <link rel="preload" href="${stylesheetHref}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <style>${criticalCss}</style>
+  <noscript><link rel="stylesheet" href="${stylesheetHref}"></noscript>
   ${jsonLd(page, extraJsonLd)}
+  ${analyticsTag}
 </head>
 <body>
-  <div class="ambient-field" aria-hidden="true">
-    ${Array.from({ length: 18 }).map((_, index) => `<span class="ambient-mark mark-${index + 1}">${index % 3 === 0 ? '−' : index % 3 === 1 ? '•' : '••'}</span>`).join('')}
-  </div>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <a class="brand" href="/" aria-label="${SITE.name} home">
@@ -245,7 +398,7 @@ ${googleTag}
     </div>
     <p class="footer-line">© 2026 ${SITE.name}. Contact: ${emailAnchor()}</p>
   </footer>
-  <script src="/assets/app.js?v=${assetVersion}" defer></script>
+  <script src="${appScriptHref}" defer></script>
 </body>
 </html>`;
 }
@@ -1043,11 +1196,53 @@ const basePages = [
 
 const allPages = [...basePages];
 
+function minifyAsset(source, loader) {
+  return transformSync(source, {
+    loader,
+    minify: true,
+    target: loader === 'js' ? 'es2019' : undefined,
+    legalComments: 'none'
+  }).code.trim();
+}
+
+function llmsText() {
+  const publicPages = allPages.filter((page) => page.indexable !== false);
+  const pageLines = publicPages.map((page) => `- [${page.navLabel || page.h1}](${canonical(page.route)}): ${page.meta.description}`);
+  const sourceLines = sourceLinks.map((item) => `- [${item.label}](${item.href}): ${item.note}`);
+
+  return [
+    '# Morse Code Alphabet',
+    '',
+    '> Fast browser-based Morse code translation, alphabet references, sound playback, and practice tools.',
+    '',
+    '## Primary Pages',
+    '',
+    ...pageLines,
+    '',
+    '## Reference Sources',
+    '',
+    ...sourceLines,
+    '',
+    '## Usage Notes',
+    '',
+    '- The translator and practice tools run in the browser.',
+    '- The character tables follow standard International Morse code patterns.',
+    '- Use the source pages for verification when exact operating rules matter.',
+    ''
+  ].join('\n');
+}
+
 function copyAssets() {
   fs.rmSync(dist, { recursive: true, force: true });
   fs.mkdirSync(path.join(dist, 'assets'), { recursive: true });
-  fs.copyFileSync(path.join(root, 'src', 'styles.css'), path.join(dist, 'assets', 'styles.css'));
-  fs.copyFileSync(path.join(root, 'src', 'app.js'), path.join(dist, 'assets', 'app.js'));
+  fs.writeFileSync(
+    path.join(dist, 'assets', 'styles.css'),
+    minifyAsset(fs.readFileSync(path.join(root, 'src', 'styles.css'), 'utf8'), 'css')
+  );
+  fs.writeFileSync(
+    path.join(dist, 'assets', 'app.js'),
+    minifyAsset(fs.readFileSync(path.join(root, 'src', 'app.js'), 'utf8'), 'js')
+  );
   fs.writeFileSync(path.join(dist, 'favicon.svg'), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0f5fff"/><circle cx="20" cy="32" r="6" fill="#fff"/><path d="M34 32h16" stroke="#fff" stroke-width="8" stroke-linecap="round"/></svg>`);
 }
 
@@ -1056,7 +1251,8 @@ function writeRobotsAndSitemaps() {
   const urls = sitemapPages.map((page) => `  <url><loc>${canonical(page.route)}</loc></url>`).join('\n');
   fs.writeFileSync(path.join(dist, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);
   fs.writeFileSync(path.join(dist, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE.url}/sitemap.xml\n`);
-  fs.writeFileSync(path.join(dist, '_headers'), `/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: microphone=(), camera=(), geolocation=()\n  Cache-Control: public, max-age=0, must-revalidate, no-transform\n/assets/*\n  Cache-Control: public, max-age=3600\n`);
+  fs.writeFileSync(path.join(dist, 'llms.txt'), llmsText());
+  fs.writeFileSync(path.join(dist, '_headers'), `/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: microphone=(), camera=(), geolocation=()\n  Cache-Control: public, max-age=0, must-revalidate, no-transform\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n/favicon.svg\n  Cache-Control: public, max-age=604800\n/llms.txt\n  Content-Type: text/plain; charset=utf-8\n  Cache-Control: public, max-age=3600\n`);
   fs.writeFileSync(path.join(dist, '_redirects'), [
     '/morse-decoder/ /morse-code-decoder/ 301',
     '/mors-decoder/ /morse-code-decoder/ 301',

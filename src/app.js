@@ -613,9 +613,18 @@
     window.addEventListener('scroll', updateScrollState, { passive: true });
 
     if (motionSafe) {
+      let pointerFrame = 0;
+      let pointerX = 0;
+      let pointerY = 0;
       window.addEventListener('pointermove', (event) => {
-        root.style.setProperty('--cursor-x', `${event.clientX}px`);
-        root.style.setProperty('--cursor-y', `${event.clientY}px`);
+        pointerX = event.clientX;
+        pointerY = event.clientY;
+        if (pointerFrame) return;
+        pointerFrame = window.requestAnimationFrame(() => {
+          root.style.setProperty('--cursor-x', `${pointerX}px`);
+          root.style.setProperty('--cursor-y', `${pointerY}px`);
+          pointerFrame = 0;
+        });
       }, { passive: true });
     }
 
