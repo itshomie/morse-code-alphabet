@@ -297,7 +297,7 @@
       });
       card.querySelectorAll('[data-example]').forEach((button) => button.addEventListener('click', () => {
         input.value = button.dataset.example;
-        if (mode === 'morse-to-text') setMode('text-to-morse');
+        if (mode === 'morse-to-text' && !card.dataset.lockMode) setMode('text-to-morse');
         update();
       }));
       update();
@@ -311,6 +311,8 @@
       if (copyButton) copyText(copyButton.dataset.copyValue, copyButton);
       const playButton = event.target.closest('[data-play-morse]');
       if (playButton) playMorse(playButton.dataset.playMorse, { card: playButton.closest('.tool-card, .section, .answer-card') });
+      const printButton = event.target.closest('[data-print-page]');
+      if (printButton) window.print();
     });
   }
 

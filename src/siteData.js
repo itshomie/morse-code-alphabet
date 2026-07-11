@@ -16,7 +16,7 @@ export const MORSE = {
 };
 
 export const PROSIGNS = [
-  { label: 'SOS', code: '... --- ...', meaning: 'Distress signal' },
+  { label: 'SOS', code: '...---...', meaning: 'Distress signal, sent as one continuous pattern' },
   { label: 'AR', code: '.-.-.', meaning: 'End of message' },
   { label: 'AS', code: '.-...', meaning: 'Wait' },
   { label: 'BT', code: '-...-', meaning: 'Separator' },
@@ -27,12 +27,13 @@ export const PROSIGNS = [
 ];
 
 export const primaryNav = [
-  { href: '/', label: 'Translator' },
+  { href: '/', label: 'Morse Code' },
   { href: '/morse-code-alphabet/', label: 'Alphabet' },
+  { href: '/english-to-morse/', label: 'English to Morse' },
   { href: '/morse-code-decoder/', label: 'Decoder' },
   { href: '/morse-code-sounds/', label: 'Sounds' },
-  { href: '/morse-code-practice/', label: 'Practice' },
-  { href: '/about/', label: 'About' }
+  { href: '/learn-morse-code/', label: 'Learn' },
+  { href: '/morse-code-practice/', label: 'Practice' }
 ];
 
 export const importantLinks = [
@@ -58,12 +59,12 @@ export const sourceLinks = [
 
 export const pageMeta = {
   '/': {
-    title: 'Morse Code Translator with Alphabet, Sound and Practice',
-    description: 'Translate English and Morse code, listen to dot-dash audio, check the alphabet, and practice with beginner-friendly Morse tools.'
+    title: 'Morse Code: Translator, Alphabet, Sound and Practice',
+    description: 'Translate Morse code, decode dots and dashes, browse the A-Z alphabet, play audio, and practice with free browser-based tools.'
   },
   '/morse-code-alphabet/': {
-    title: 'Morse Code Alphabet: A-Z Letters, Numbers and Symbols',
-    description: 'Use the Morse code alphabet table for A-Z letters, numbers, punctuation, prosigns, sound playback, and quick copy checks.'
+    title: 'Morse Code Alphabet Chart: A-Z, Numbers and Audio',
+    description: 'Use the complete Morse code alphabet chart with A-Z letters, numbers, punctuation, dit-dah pronunciation, audio, copy tools, and a printable view.'
   },
   '/morse-code-decoder/': {
     title: 'Morse Code Decoder: Convert Dots and Dashes to English',
@@ -78,12 +79,12 @@ export const pageMeta = {
     description: 'Learn Morse code with starter letter groups, a simple daily plan, listening drills, timing rules, and practice tools.'
   },
   '/morse-code-practice/': {
-    title: 'Morse Code Practice: Listening, Reading and Key Trainer',
-    description: 'Practice Morse code with listening questions, visual Morse questions, tap-and-hold key input, sound feedback, and progress tracking.'
+    title: 'Morse Code Practice Online: Listening Quiz and Key Trainer',
+    description: 'Practice Morse code online with listening questions, visual quizzes, tap-and-hold key input, sound feedback, and progress tracking.'
   },
   '/morse-code-meaning/': {
-    title: 'Morse Code Meaning: What Dots and Dashes Represent',
-    description: 'Understand what Morse code means, how dots and dashes represent text, why spacing matters, and where Morse is still used.'
+    title: 'What Is Morse Code? Meaning, Signals and How It Works',
+    description: 'Learn what Morse code is, how dots, dashes, and spacing represent text, how signals are sent, and where Morse code is still used.'
   },
   '/international-morse-code/': {
     title: 'International Morse Code Reference: Letters, Numbers and Timing',

@@ -122,7 +122,7 @@ const criticalCss = transformSync(`
   .brand-signal i, .brand-signal b { display: block; height: 5px; border-radius: 999px; background: var(--accent); }
   .brand-signal i { width: 5px; }
   .brand-signal b { width: 18px; }
-  .main-nav { justify-self: center; display: flex; align-items: center; gap: clamp(18px, 3vw, 46px); font-size: 0.94rem; font-weight: 760; }
+  .main-nav { justify-self: center; display: flex; align-items: center; gap: clamp(12px, 2vw, 30px); font-size: 0.94rem; font-weight: 760; }
   .main-nav a { padding: 26px 0; }
   .icon-button { min-width: 48px; height: 38px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 0.78rem; font-weight: 800; }
   .hero { padding: 22px 0 30px; }
@@ -157,11 +157,15 @@ const criticalCss = transformSync(`
   .button.small { min-height: 36px; padding: 0 13px; font-size: 0.88rem; }
   .swap-button { width: 52px; height: 52px; border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line)); border-radius: 999px; background: var(--swap-bg); color: var(--swap-text); font-size: 0; box-shadow: 0 0 0 12px var(--swap-ring), 0 14px 28px rgba(6, 22, 63, 0.16); }
   .swap-button::before { content: "<>"; font-size: 1.05rem; font-weight: 900; letter-spacing: 0; }
+  .conversion-arrow { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line)); border-radius: 999px; background: var(--accent-soft); color: var(--accent-dark); font-size: 1.2rem; font-weight: 900; }
+  .direction-link { white-space: nowrap; }
   @media (max-width: 860px) {
     main { width: min(100% - 24px, 720px); }
     .site-header { grid-template-columns: 1fr auto; gap: 12px; padding: 12px; }
-    .main-nav { grid-column: 1 / -1; justify-self: stretch; overflow-x: auto; gap: 18px; padding-bottom: 2px; }
-    .main-nav a { padding: 4px 0 8px; }
+    .site-header .brand { grid-column: 1; grid-row: 1; min-width: 0; }
+    .site-header .icon-button { grid-column: 2; grid-row: 1; justify-self: end; }
+    .main-nav { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; gap: 18px; padding-bottom: 2px; }
+    .main-nav a { flex: 0 0 auto; padding: 4px 0 8px; white-space: nowrap; }
     .hero-top { min-height: clamp(360px, 90vw, 430px); }
     .hero-wave { inset: 0 -18%; opacity: 0.34; transform: scale(1.22); }
     .hero-tool { margin-top: -34px; }
@@ -169,6 +173,7 @@ const criticalCss = transformSync(`
     .translator-toolbar { display: block; }
     .segmented { margin-top: 14px; width: 100%; }
     .swap-button { justify-self: center; transform: rotate(90deg); }
+    .conversion-arrow { justify-self: center; transform: rotate(90deg); }
   }
   @media (max-width: 520px) {
     body { background: var(--bg); }
@@ -341,6 +346,7 @@ function minifyHtml(html) {
 
 function layout(page, body, extraJsonLd = []) {
   const themeColor = '#f7f9fd';
+  const canonicalUrl = page.canonical === false ? '' : canonical(page.route);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -349,19 +355,19 @@ function layout(page, body, extraJsonLd = []) {
   <title>${escapeHtml(page.meta.title)}</title>
   <meta name="description" content="${escapeHtml(page.meta.description)}">
   <meta name="robots" content="${page.indexable === false ? 'noindex,follow' : 'index,follow'}">
-  <link rel="canonical" href="${canonical(page.route)}">
+  ${canonicalUrl ? `<link rel="canonical" href="${canonicalUrl}">` : ''}
   <meta name="theme-color" content="${themeColor}">
   <meta property="og:type" content="website">
   <meta property="og:title" content="${escapeHtml(page.meta.title)}">
   <meta property="og:description" content="${escapeHtml(page.meta.description)}">
-  <meta property="og:url" content="${canonical(page.route)}">
+  ${canonicalUrl ? `<meta property="og:url" content="${canonicalUrl}">` : ''}
   <meta property="og:site_name" content="${SITE.name}">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="${stylesheetHref}" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <style>${criticalCss}</style>
   <noscript><link rel="stylesheet" href="${stylesheetHref}"></noscript>
-  ${jsonLd(page, extraJsonLd)}
+  ${page.jsonLd === false ? '' : jsonLd(page, extraJsonLd)}
   ${analyticsTag}
 </head>
 <body>
@@ -393,6 +399,7 @@ function layout(page, body, extraJsonLd = []) {
       <h2>Learn</h2>
       ${linkList([
         { href: '/morse-code-alphabet/', label: 'Alphabet' },
+        { href: '/morse-code-meaning/', label: 'What is Morse code?' },
         { href: '/learn-morse-code/', label: 'Learning path' },
         { href: '/morse-code-practice/', label: 'Practice' },
         { href: '/international-morse-code/', label: 'International code' }
@@ -466,21 +473,29 @@ function hero(page, intro, tool = '') {
   `;
 }
 
-function converterCard({ id, mode = 'text-to-morse', title = 'Morse Code Translator', text = 'Type text or Morse code and get an instant result.' }) {
+function converterCard({ id, mode = 'text-to-morse', title = 'Morse Code Translator', text = 'Type text or Morse code and get an instant result.', lockMode = false }) {
   const isDecode = mode === 'morse-to-text';
+  const otherDirection = isDecode
+    ? { href: '/english-to-morse/', label: 'Need to encode text?' }
+    : { href: '/morse-code-decoder/', label: 'Need to decode Morse?' };
+  const samples = isDecode && lockMode
+    ? ['... --- ...', '.... . .-.. .-.. ---', '-- --- .-. ... .', '--... ...--']
+    : ['SOS', 'HELLO', 'MORSE', '73', 'CQ CQ CQ'];
   return `
-    <section class="tool-card translator-card" data-converter data-default-mode="${mode}" id="${id}">
+    <section class="tool-card translator-card" data-converter data-default-mode="${mode}"${lockMode ? ` data-lock-mode="${mode}"` : ''} id="${id}">
       <div class="translator-toolbar">
         <div>
           <h2>${escapeHtml(title)}</h2>
           <p>${escapeHtml(text)}</p>
         </div>
-        <div class="segmented" role="group" aria-label="Conversion direction">
-          <button type="button" data-mode="text-to-morse" class="${isDecode ? '' : 'active'}">English → Morse</button>
-          <button type="button" data-mode="morse-to-text" class="${isDecode ? 'active' : ''}">Morse → English</button>
-        </div>
+        ${lockMode
+          ? `<a class="button secondary small direction-link" href="${otherDirection.href}">${otherDirection.label}</a>`
+          : `<div class="segmented" role="group" aria-label="Conversion direction">
+              <button type="button" data-mode="text-to-morse" class="${isDecode ? '' : 'active'}">English → Morse</button>
+              <button type="button" data-mode="morse-to-text" class="${isDecode ? 'active' : ''}">Morse → English</button>
+            </div>`}
       </div>
-      <div class="translator-grid">
+      <div class="translator-grid${lockMode ? ' fixed-direction' : ''}">
         <div class="translator-panel">
           <label class="field-label" for="${id}-input" data-source-label>${isDecode ? 'Morse Code' : 'Text'}</label>
           <textarea id="${id}-input" data-input rows="6" maxlength="1200" placeholder="${isDecode ? 'Morse code will appear here.' : 'English text will appear here.'}"></textarea>
@@ -489,7 +504,9 @@ function converterCard({ id, mode = 'text-to-morse', title = 'Morse Code Transla
             <button class="button ghost small" type="button" data-clear>Clear</button>
           </div>
         </div>
-        <button class="swap-button" type="button" data-swap aria-label="Swap conversion direction">Swap</button>
+        ${lockMode
+          ? '<span class="conversion-arrow" aria-hidden="true">→</span>'
+          : '<button class="swap-button" type="button" data-swap aria-label="Swap conversion direction">Swap</button>'}
         <div class="translator-panel">
           <label class="field-label" for="${id}-output" data-result-label>${isDecode ? 'Text' : 'Morse Code'}</label>
           <output id="${id}-output" data-output class="result-box" aria-live="polite">${isDecode ? 'English text will appear here.' : 'Morse code will appear here.'}</output>
@@ -503,7 +520,7 @@ function converterCard({ id, mode = 'text-to-morse', title = 'Morse Code Transla
       <p class="tool-error" data-error hidden></p>
       <div class="examples" aria-label="Examples">
         <span>Examples:</span>
-        ${['SOS', 'HELLO', 'MORSE', '73', 'CQ CQ CQ'].map((sample) => `<button type="button" data-example="${sample}">${sample}</button>`).join('')}
+        ${samples.map((sample) => `<button type="button" data-example="${sample}">${sample}</button>`).join('')}
       </div>
     </section>
   `;
@@ -620,9 +637,17 @@ function keyerTool() {
   `;
 }
 
-function alphabetTable(chars, title) {
+function morsePronunciation(code) {
+  const signals = [...code].filter((part) => part === '.' || part === '-');
+  return signals.map((part, index) => {
+    if (part === '-') return 'dah';
+    return index === signals.length - 1 ? 'dit' : 'di';
+  }).join('-');
+}
+
+function alphabetTable(chars, title, id = '') {
   return `
-    <section class="section">
+    <section class="section"${id ? ` id="${id}"` : ''}>
       <div class="section-head">
         <h2>${title}</h2>
       </div>
@@ -631,6 +656,7 @@ function alphabetTable(chars, title) {
           return `<article class="symbol-card" data-symbol-card data-symbol="${char}" data-morse="${MORSE[char]}">
             <strong>${escapeHtml(char)}</strong>
             <code>${MORSE[char]}</code>
+            <span class="symbol-pronunciation">${morsePronunciation(MORSE[char])}</span>
             <div class="symbol-actions">
               <button type="button" data-play-morse="${MORSE[char]}">Play</button>
               <button type="button" data-copy-value="${MORSE[char]}">Copy</button>
@@ -695,11 +721,11 @@ function sectionTitle(title, link = '') {
 function homeFeatureTiles() {
   const tiles = [
     { href: '/morse-code-alphabet/', label: 'Morse Code Alphabet', desc: 'View all letters, numbers and symbols.', mark: '.-' },
-    { href: '/morse-code-sounds/', label: 'Morse Code Sounds', desc: 'Listen to Morse code with different speeds.', mark: '--' },
+    { href: '/english-to-morse/', label: 'English to Morse', desc: 'Turn words and messages into dots and dashes.', mark: '.--' },
     { href: '/morse-code-decoder/', label: 'Morse Code Decoder', desc: 'Decode Morse code to text.', mark: '..' },
+    { href: '/morse-code-sounds/', label: 'Morse Code Sounds', desc: 'Listen to Morse code with different speeds.', mark: '--' },
     { href: '/morse-code-practice/', label: 'Morse Code Practice', desc: 'Practice reading, listening, and key timing.', mark: '-.' },
-    { href: '/learn-morse-code/', label: 'Learn Morse Code', desc: 'Build a simple daily learning routine.', mark: '.--' },
-    { href: '/morse-code-meaning/', label: 'History and Reference', desc: 'Learn the meaning and use cases.', mark: '...' }
+    { href: '/learn-morse-code/', label: 'Learn Morse Code', desc: 'Build a simple daily learning routine.', mark: '...' }
   ];
   return `
     <section class="feature-tiles" aria-label="Popular Morse code sections">
@@ -774,7 +800,7 @@ function homeToolGuide() {
     <section class="section columns">
       <div>
         <h2>Which Morse Code Tool Should You Use?</h2>
-        <p>If you already have dots and dashes, start with the Morse code decoder. If you have ordinary text, use the English to Morse translator. When you are learning the code, keep the alphabet and sound pages open so you can check both the written pattern and the rhythm.</p>
+        <p>If you already have dots and dashes, start with the <a href="/morse-code-decoder/">Morse code decoder</a>. If you have ordinary text, use the <a href="/english-to-morse/">English to Morse translator</a>. When you are learning the code, keep the <a href="/morse-code-alphabet/">alphabet</a> and <a href="/morse-code-sounds/">sound player</a> open so you can check both the written pattern and the rhythm.</p>
         <p>This matters because Morse is not just a visual code. A message can look correct on screen but still be hard to understand by ear if the spaces between letters and words are unclear.</p>
       </div>
       <div>
@@ -786,10 +812,33 @@ function homeToolGuide() {
   `;
 }
 
+function homeOverview() {
+  return `
+    <section class="section columns">
+      <div>
+        <h2>What Is Morse Code?</h2>
+        <p>Morse code is an encoding system that represents letters, numbers, and punctuation with short signals called dots and longer signals called dashes. The same patterns can be sent as sound, light, radio, tapping, or written symbols.</p>
+        <p>It is not encryption: anyone with the alphabet can read the message. Clear spacing between signals, letters, and words is what makes the code understandable.</p>
+        <a class="button secondary" href="/morse-code-meaning/">Learn how Morse code works</a>
+      </div>
+      <div>
+        <h2>Morse Code at a Glance</h2>
+        ${exampleTable(['Part', 'Length', 'Example'], [
+          [{ text: 'Dot' }, { text: '1 timing unit' }, { text: 'E is .', code: true }],
+          [{ text: 'Dash' }, { text: '3 timing units' }, { text: 'T is -', code: true }],
+          [{ text: 'Letter gap' }, { text: '3 timing units' }, { text: 'S O S', code: true }],
+          [{ text: 'Word gap' }, { text: '7 timing units' }, { text: 'Often written /', code: true }]
+        ])}
+      </div>
+    </section>
+  `;
+}
+
 function homePage(page) {
   const body = `
-    ${hero(page, 'Translate text to Morse code and Morse code to text instantly. Listen to the sound, copy, and share with ease.', converterCard({ id: 'home-converter', title: 'Morse Code Translator' }))}
+    ${hero(page, 'Morse code uses dots, dashes, and spacing to represent text. Translate a message, check the alphabet, hear the sound, or start practicing.', converterCard({ id: 'home-converter', title: 'Morse Code Translator' }))}
     ${homeFeatureTiles()}
+    ${homeOverview()}
     ${homeToolGuide()}
     ${homeAlphabetPreview()}
     ${homeBenefits()}
@@ -860,7 +909,7 @@ function toolPage(page, mode) {
     steps: [
       'Type a word, sentence, number, or short message in plain English.',
       'The Morse output updates immediately with spaces between letters.',
-      'Copy the result, play it as sound, or download it as an audio file.'
+      'Copy the result, play it as sound, or download the written Morse code as a text file.'
     ],
     sideTitle: 'What Converts Well',
     sideText: 'Short messages, names, call signs, numbers, and common punctuation work best. Unsupported characters are skipped so the result stays readable.',
@@ -883,7 +932,7 @@ function toolPage(page, mode) {
     faq: [
       { q: 'Can English punctuation be converted?', a: 'Common punctuation such as periods, commas, question marks, and slashes can be converted.' },
       { q: 'Why are there slashes in the Morse result?', a: 'A slash marks a word break so copied Morse stays readable in plain text.' },
-      { q: 'Can I hear the Morse code after translating?', a: 'Yes. Use Play to hear the timing, or Download to save a WAV file.' }
+      { q: 'Can I hear the Morse code after translating?', a: 'Yes. Use Play to hear the timing. Download saves the written result as a text file; the sound page can create a WAV file.' }
     ],
     related: [
       { href: '/morse-code-decoder/', label: 'Morse Code Decoder', desc: 'Convert dots and dashes back to text.' },
@@ -896,7 +945,8 @@ function toolPage(page, mode) {
       id: isDecode ? 'decoder' : 'encoder',
       mode,
       title: guide.title,
-      text: guide.text
+      text: guide.text,
+      lockMode: true
     }))}
     <section class="section columns">
       <div>
@@ -935,12 +985,16 @@ function toolPage(page, mode) {
 
 function alphabetPage(page) {
   const body = `
-    ${hero(page, 'Browse letters, numbers, punctuation, and prosigns. Click any item to play or copy its Morse code.')}
+    ${hero(page, 'Use the complete International Morse code alphabet chart for A-Z letters, numbers, punctuation, and prosigns. Play, copy, search, or print any pattern.')}
     <section class="section columns">
       <div>
-        <h2>How to Read the Morse Code Alphabet</h2>
-        <p>Every character has its own dot-and-dash pattern. A dot is the short mark, and a dash is the long mark. For example, A is <code>.-</code>, N is <code>-.</code>, S is <code>...</code>, and O is <code>---</code>.</p>
-        <p>When you copy a word in Morse, keep one space between character patterns. When you copy a sentence, use a slash between words so the message can be decoded later.</p>
+        <h2>Complete Morse Code Alphabet Chart</h2>
+        <p>Every character has its own dot-and-dash pattern. A dot is one timing unit and a dash is three. For example, A is <code>.-</code> (di-dah), N is <code>-.</code> (dah-dit), S is <code>...</code> (di-di-dit), and O is <code>---</code> (dah-dah-dah).</p>
+        <p>The chart follows International Morse code. Use the Play button to hear a character, Copy to reuse its written pattern, or print the page as a compact study sheet.</p>
+        <div class="page-actions">
+          <button class="button primary" type="button" data-print-page>Print / Save as PDF</button>
+          <a class="button secondary" href="#morse-letters">Jump to A-Z</a>
+        </div>
       </div>
       <div>
         <h2>Quick Characters People Often Check</h2>
@@ -953,17 +1007,38 @@ function alphabetPage(page) {
         ])}
       </div>
     </section>
-    <section class="section">
+    <section class="section alphabet-search-section">
       <label class="search-label" for="alphabet-search">Search the alphabet</label>
-      <input id="alphabet-search" class="search-input" type="search" data-alphabet-search placeholder="Search A, 7, question mark, SOS...">
+      <input id="alphabet-search" class="search-input" type="search" data-alphabet-search placeholder="Search A, 7, ?, or .-...">
     </section>
-    ${alphabetTable(letters, 'A-Z Letters')}
-    ${alphabetTable(digits, 'Numbers 0-9')}
-    ${alphabetTable(punctuation, 'Punctuation')}
+    ${alphabetTable(letters, 'Morse Code Letters A-Z', 'morse-letters')}
+    ${alphabetTable(digits, 'Morse Code Numbers 0-9', 'morse-numbers')}
+    ${alphabetTable(punctuation, 'Morse Code Punctuation', 'morse-punctuation')}
     ${prosignTable()}
+    <section class="section columns">
+      <div>
+        <h2>How to Space Morse Code</h2>
+        <p>Keep a one-unit pause between the dots and dashes inside one character, a three-unit pause between letters, and a seven-unit pause between words. In plain text, this site uses one space between letters and a slash between words.</p>
+        <p>For example, <code>HELLO</code> is <code>.... . .-.. .-.. ---</code>, while <code>HELLO WORLD</code> places a slash between the two words.</p>
+      </div>
+      <div>
+        <h2>SOS: Letters vs. Continuous Signal</h2>
+        <p>When written as three letters, SOS appears as <code>... --- ...</code>. The formal distress signal is sent continuously as <code>...---...</code>, without normal letter gaps. The pattern is distinctive because it combines three short, three long, and three short signals.</p>
+      </div>
+    </section>
+    <section class="section source-note">
+      <h2>Standard and Accuracy</h2>
+      <p>The characters and timing on this page are checked against the International Telecommunication Union recommendation for International Morse code. See the <a href="/sources/">source notes</a> or the <a href="/international-morse-code/">International Morse code reference</a> for standards, timing, and operating signs.</p>
+    </section>
+    ${related([
+      { href: '/english-to-morse/', label: 'English to Morse', desc: 'Turn a word or message into Morse code.' },
+      { href: '/morse-code-sounds/', label: 'Morse Code Sounds', desc: 'Hear timing at different speeds.' },
+      { href: '/morse-code-practice/', label: 'Morse Code Practice', desc: 'Quiz yourself after using the chart.' }
+    ])}
     ${faq([
       { q: 'What is A in Morse code?', a: 'A is dot dash, written as .-.' },
       { q: 'What is the Morse code for numbers?', a: 'Numbers use five-signal patterns, such as 1 as .---- and 0 as -----. ' },
+      { q: 'Can I print this Morse code alphabet?', a: 'Yes. Use Print / Save as PDF to print the chart or save it as a PDF from your browser.' },
       { q: 'Are prosigns the same as normal letters?', a: 'No. Prosigns are sent as special joined signals, even if their labels look like two letters.' }
     ])}
   `;
@@ -972,12 +1047,12 @@ function alphabetPage(page) {
 
 function meaningPage(page) {
   const body = `
-    ${hero(page, 'Morse code means writing information with short and long signals instead of ordinary letters.')}
+    ${hero(page, 'Morse code is an encoding system that represents text with short and long signals. It can be sent as sound, light, radio, tapping, or written dots and dashes.')}
     <section class="section columns">
       <div>
-        <h2>Simple Meaning</h2>
+        <h2>Morse Code Meaning</h2>
         <p>Morse code is a signal alphabet. Each letter, number, or symbol is represented by a pattern of dots and dashes. A dot is a short signal. A dash is a longer signal.</p>
-        <p>For example, <code>S</code> is <code>...</code>, <code>O</code> is <code>---</code>, and <code>SOS</code> is <code>... --- ...</code>.</p>
+        <p>For example, <code>S</code> is <code>...</code>, <code>O</code> is <code>---</code>, and the letters SOS are written <code>... --- ...</code>. The formal distress signal joins the pattern as <code>...---...</code>.</p>
       </div>
       <div class="answer-card">
         <span class="eyeless-label">Quick example</span>
@@ -1026,7 +1101,7 @@ function internationalPage(page) {
     <section class="section">
       <div class="section-head">
         <h2>International Morse Code Table</h2>
-        <p>This reference groups the standard letters and numbers without changing the alphabet page into a duplicate page.</p>
+        <p>This reference groups the character categories used by International Morse code and shows where to find the full interactive alphabet.</p>
       </div>
       <div class="table-wrap">
         <table>
@@ -1053,7 +1128,7 @@ function internationalPage(page) {
       </div>
       <div>
         <h2>Reference Notes</h2>
-        <p>The table on this page is meant as a standard reference, not a second copy of the full alphabet page. Use it when you need the categories, timing units, and prosigns together. Use the alphabet page when you want to play or copy individual characters quickly.</p>
+        <p>Use this page when you need the standard categories, timing units, and prosigns together. Use the alphabet page when you want to play, pronounce, copy, or print individual characters quickly.</p>
       </div>
     </section>
     ${related([
@@ -1239,7 +1314,7 @@ function sourcesPage(page) {
     <section class="section columns">
       <div>
         <h2>How References Are Used</h2>
-        <p>The character tables follow standard International Morse code patterns. Learning notes and historical context are kept separate so reference pages do not become duplicate copies of each other.</p>
+        <p>The character tables follow standard International Morse code patterns. Learning notes and historical context are checked separately so each explanation stays clear and traceable.</p>
       </div>
       <div>
         <h2>What We Verify</h2>
@@ -1268,7 +1343,7 @@ function sourcesPage(page) {
     <section class="section columns">
       <div>
         <h2>Update Habit</h2>
-        <p>When a page on this site explains a character, timing rule, or beginner drill, the goal is to keep the explanation short but traceable. If a reference changes, the affected page should be updated instead of adding another near-duplicate article.</p>
+        <p>When a page explains a character, timing rule, or beginner drill, the goal is to keep the answer short but traceable. If a standard changes, the affected facts and examples should be checked again.</p>
       </div>
       <div>
         <h2>What Is Not Covered</h2>
@@ -1354,15 +1429,38 @@ function sitemapPage(page) {
   return layout(page, body);
 }
 
+function notFoundPage() {
+  const page = {
+    route: '/404/',
+    h1: 'Page Not Found',
+    meta: {
+      title: 'Page Not Found | Morse Code Alphabet',
+      description: 'The requested page does not exist. Use the Morse code tools, alphabet chart, or practice pages instead.'
+    },
+    indexable: false,
+    canonical: false,
+    jsonLd: false
+  };
+  const body = `
+    ${hero(page, 'The address may be old or mistyped. Choose a working Morse code tool below.')}
+    ${related([
+      { href: '/', label: 'Morse Code Tools', desc: 'Translate, listen, and explore the main site.' },
+      { href: '/morse-code-alphabet/', label: 'Morse Code Alphabet', desc: 'Open the complete A-Z chart.' },
+      { href: '/morse-code-practice/', label: 'Morse Code Practice', desc: 'Practice reading and listening.' }
+    ])}
+  `;
+  return layout(page, body);
+}
+
 const basePages = [
-  { route: '/', h1: 'Morse Code Translator', navLabel: 'Home', meta: pageMeta['/'], render: homePage, faq: commonFaq },
-  { route: '/morse-code-alphabet/', h1: 'Morse Code Alphabet', navLabel: 'Morse Code Alphabet', meta: pageMeta['/morse-code-alphabet/'], render: alphabetPage },
-  { route: '/morse-code-decoder/', h1: 'Morse Code Decoder', navLabel: 'Morse Code Decoder', meta: pageMeta['/morse-code-decoder/'], render: (page) => toolPage(page, 'morse-to-text') },
-  { route: '/english-to-morse/', h1: 'English to Morse', navLabel: 'English to Morse', meta: pageMeta['/english-to-morse/'], render: (page) => toolPage(page, 'text-to-morse') },
+  { route: '/', h1: 'Morse Code', navLabel: 'Home', meta: pageMeta['/'], updatedAt: '2026-07-10', render: homePage, faq: commonFaq },
+  { route: '/morse-code-alphabet/', h1: 'Morse Code Alphabet Chart', navLabel: 'Morse Code Alphabet', meta: pageMeta['/morse-code-alphabet/'], updatedAt: '2026-07-10', render: alphabetPage },
+  { route: '/morse-code-decoder/', h1: 'Morse Code Decoder', navLabel: 'Morse Code Decoder', meta: pageMeta['/morse-code-decoder/'], updatedAt: '2026-07-10', render: (page) => toolPage(page, 'morse-to-text') },
+  { route: '/english-to-morse/', h1: 'English to Morse Code Translator', navLabel: 'English to Morse', meta: pageMeta['/english-to-morse/'], updatedAt: '2026-07-10', render: (page) => toolPage(page, 'text-to-morse') },
   { route: '/learn-morse-code/', h1: 'Learn Morse Code', navLabel: 'Learn Morse Code', meta: pageMeta['/learn-morse-code/'], render: learnPage },
-  { route: '/morse-code-practice/', h1: 'Morse Code Practice', navLabel: 'Morse Code Practice', meta: pageMeta['/morse-code-practice/'], render: practicePage },
-  { route: '/morse-code-meaning/', h1: 'Morse Code Meaning', navLabel: 'Morse Code Meaning', meta: pageMeta['/morse-code-meaning/'], render: meaningPage },
-  { route: '/international-morse-code/', h1: 'International Morse Code', navLabel: 'International Morse Code', meta: pageMeta['/international-morse-code/'], render: internationalPage },
+  { route: '/morse-code-practice/', h1: 'Morse Code Practice', navLabel: 'Morse Code Practice', meta: pageMeta['/morse-code-practice/'], updatedAt: '2026-07-10', render: practicePage },
+  { route: '/morse-code-meaning/', h1: 'What Is Morse Code?', navLabel: 'What Is Morse Code?', meta: pageMeta['/morse-code-meaning/'], updatedAt: '2026-07-10', render: meaningPage },
+  { route: '/international-morse-code/', h1: 'International Morse Code', navLabel: 'International Morse Code', meta: pageMeta['/international-morse-code/'], updatedAt: '2026-07-10', render: internationalPage },
   { route: '/morse-code-sounds/', h1: 'Morse Code Sounds', navLabel: 'Morse Code Sounds', meta: pageMeta['/morse-code-sounds/'], render: soundsPage },
   { route: '/about/', h1: 'About Morse Code Alphabet', navLabel: 'About', meta: pageMeta['/about/'], indexable: false, render: (page) => simplePage(page, {
     intro: 'Morse Code Alphabet brings together practical Morse conversion, sound playback, reference tables, and practice tools.',
@@ -1381,7 +1479,7 @@ const basePages = [
   }) },
   { route: '/privacy-policy/', h1: 'Privacy Policy', navLabel: 'Privacy Policy', meta: pageMeta['/privacy-policy/'], indexable: false, render: (page) => legalPage(page, 'privacy') },
   { route: '/terms/', h1: 'Terms of Use', navLabel: 'Terms', meta: pageMeta['/terms/'], indexable: false, render: (page) => legalPage(page, 'terms') },
-  { route: '/sources/', h1: 'Morse Code Sources', navLabel: 'Sources', meta: pageMeta['/sources/'], render: sourcesPage },
+  { route: '/sources/', h1: 'Morse Code Sources', navLabel: 'Sources', meta: pageMeta['/sources/'], indexable: false, render: sourcesPage },
   { route: '/sitemap/', h1: 'Sitemap', navLabel: 'Sitemap', meta: pageMeta['/sitemap/'], indexable: false, render: sitemapPage }
 ];
 
@@ -1437,6 +1535,10 @@ function copyAssets() {
   fs.writeFileSync(path.join(dist, 'favicon.svg'), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0f5fff"/><circle cx="20" cy="32" r="6" fill="#fff"/><path d="M34 32h16" stroke="#fff" stroke-width="8" stroke-linecap="round"/></svg>`);
 }
 
+function writeNotFoundPage() {
+  fs.writeFileSync(path.join(dist, '404.html'), minifyHtml(notFoundPage()));
+}
+
 function writeRobotsAndSitemaps() {
   const sitemapPages = allPages.filter((page) => page.indexable !== false && page.inSitemap !== false);
   const urls = sitemapPages.map((page) => [
@@ -1476,5 +1578,6 @@ copyAssets();
 for (const page of allPages) {
   write(page.route, page.render(page));
 }
+writeNotFoundPage();
 writeRobotsAndSitemaps();
 console.log(`Built ${allPages.length} pages into ${dist}`);

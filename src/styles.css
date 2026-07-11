@@ -173,7 +173,7 @@ main {
   justify-self: center;
   display: flex;
   align-items: center;
-  gap: clamp(18px, 3vw, 46px);
+  gap: clamp(12px, 2vw, 30px);
   font-size: 0.94rem;
   font-weight: 760;
 }
@@ -637,6 +637,23 @@ textarea:focus::placeholder {
   box-shadow: 0 0 0 15px var(--swap-ring), 0 18px 34px rgba(6, 22, 63, 0.22);
 }
 
+.conversion-arrow {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line));
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.direction-link {
+  white-space: nowrap;
+}
+
 :root[data-theme="dark"] .swap-button {
   box-shadow: 0 0 0 10px var(--swap-ring), 0 12px 28px rgba(0, 0, 0, 0.28);
 }
@@ -777,6 +794,11 @@ td button:hover {
   gap: 24px;
 }
 
+.split-section > *,
+.columns > * {
+  min-width: 0;
+}
+
 .split-section { align-items: start; }
 .stacked-cards { display: grid; gap: 14px; align-content: start; }
 
@@ -836,8 +858,32 @@ code,
 
 .symbol-card code {
   display: block;
-  margin: 4px 0 12px;
+  margin: 4px 0 2px;
   font-size: 1.1rem;
+}
+
+.symbol-pronunciation {
+  display: block;
+  min-height: 1.45em;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.source-note a,
+.columns p a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .symbol-actions {
@@ -945,7 +991,10 @@ code,
   font-weight: 900;
 }
 
-.table-wrap { overflow-x: auto; }
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
 
 table {
   width: 100%;
@@ -1482,14 +1531,32 @@ input[type="range"] {
     gap: 12px;
     padding: 12px;
   }
+  .site-header .brand {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .site-header .icon-button {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
   .main-nav {
     grid-column: 1 / -1;
+    grid-row: 2;
     justify-self: stretch;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     overflow-x: auto;
     gap: 18px;
     padding-bottom: 2px;
   }
-  .main-nav a { padding: 4px 0 8px; }
+  .main-nav a {
+    flex: 0 0 auto;
+    padding: 4px 0 8px;
+    white-space: nowrap;
+  }
   .main-nav a::after { bottom: 0; }
   .hero { padding-top: 22px; }
   .translator-grid,
@@ -1543,6 +1610,10 @@ input[type="range"] {
     width: 100%;
   }
   .swap-button {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+  .conversion-arrow {
     justify-self: center;
     transform: rotate(90deg);
   }
@@ -1600,6 +1671,114 @@ input[type="range"] {
   .translator-panel .result-box {
     min-height: 132px;
   }
+}
+
+@media print {
+  @page { margin: 10mm; }
+
+  :root,
+  :root[data-theme="dark"] {
+    color-scheme: light;
+    --bg: #fff;
+    --surface: #fff;
+    --surface-soft: #fff;
+    --text: #000;
+    --muted: #333;
+    --line: #aaa;
+    --line-strong: #777;
+    --accent: #000;
+    --accent-dark: #000;
+  }
+
+  body,
+  :root[data-theme="dark"] body {
+    background: #fff;
+    color: #000;
+    font-size: 10pt;
+  }
+
+  .site-header,
+  .site-footer,
+  .breadcrumb,
+  .hero-wave,
+  .trust-row,
+  .page-actions,
+  .alphabet-search-section,
+  .symbol-actions,
+  .related,
+  .faq-section,
+  .source-note {
+    display: none !important;
+  }
+
+  main {
+    width: 100%;
+    margin: 0;
+  }
+
+  .hero,
+  .section {
+    margin: 0 0 10px;
+    padding: 8px 0;
+    border: 0;
+    box-shadow: none;
+    background: #fff;
+  }
+
+  .hero-top,
+  .hero-plain .hero-top {
+    min-height: 0;
+  }
+
+  .hero-copy {
+    display: block;
+    max-width: none;
+    text-align: left;
+  }
+
+  .hero-copy h1 {
+    font-size: 24pt;
+  }
+
+  .hero-copy p {
+    max-width: none;
+    margin-top: 6px;
+    font-size: 10pt;
+  }
+
+  .columns {
+    display: block;
+  }
+
+  .columns > div + div {
+    margin-top: 10px;
+  }
+
+  .alphabet-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+
+  .symbol-card {
+    min-height: 0;
+    padding: 7px;
+    break-inside: avoid;
+  }
+
+  .symbol-card strong {
+    font-size: 12pt;
+  }
+
+  .symbol-card code {
+    font-size: 10pt;
+  }
+
+  .symbol-pronunciation {
+    min-height: 0;
+    margin: 2px 0 0;
+    font-size: 8pt;
+  }
+
 }
 
 @media (prefers-reduced-motion: reduce) {
