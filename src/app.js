@@ -10,6 +10,7 @@
   };
   const REVERSE = Object.fromEntries(Object.entries(MORSE).map(([key, value]) => [value, key]));
   const practiceChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
+  const analyticsConsentKey = 'mca-analytics-consent';
   let audioContext;
   let stopPlayback = false;
   let heldTone;
@@ -22,6 +23,46 @@
     'text-to-morse': 'English text will appear here.',
     'morse-to-text': 'Morse code will appear here.'
   };
+
+  function analyticsSurface(node) {
+    if (!node?.closest) return 'unknown';
+    const converter = node.closest('[data-converter]');
+    if (converter) return converter.id || 'translator';
+    if (node.closest('[data-sound-tool]')) return 'sound-player';
+    if (node.closest('[data-practice]')) return 'practice-trainer';
+    if (node.closest('[data-keyer]')) return 'morse-key';
+    if (node.closest('[data-symbol-card]')) return 'alphabet-card';
+    return 'site-content';
+  }
+
+  function trackEvent(name, parameters = {}) {
+    if (!window.mcaAnalyticsEnabled || typeof window.gtag !== 'function') return false;
+    window.gtag('event', name, {
+      ...parameters,
+      page_path: window.location.pathname
+    });
+    return true;
+  }
+
+  function initConsent() {
+    const banner = document.querySelector('[data-consent-banner]');
+    if (!banner) return;
+    const readChoice = () => {
+      try { return localStorage.getItem(analyticsConsentKey); } catch { return null; }
+    };
+    const hide = () => { banner.hidden = true; };
+    const show = () => { banner.hidden = false; };
+    const choose = (choice) => {
+      const wasEnabled = Boolean(window.mcaAnalyticsEnabled);
+      window.mcaSetAnalyticsConsent?.(choice);
+      hide();
+      if (choice === 'denied' && wasEnabled) window.location.reload();
+    };
+    banner.querySelector('[data-consent-accept]')?.addEventListener('click', () => choose('granted'));
+    banner.querySelector('[data-consent-decline]')?.addEventListener('click', () => choose('denied'));
+    document.querySelectorAll('[data-privacy-choices]').forEach((button) => button.addEventListener('click', show));
+    if (!readChoice()) window.setTimeout(show, 350);
+  }
 
   function setTheme(theme, animate = false) {
     if (animate) {
@@ -88,6 +129,7 @@
       if (!button) return;
       const original = button.textContent;
       button.textContent = 'Copied';
+      trackEvent('tool_copy', { tool_surface: analyticsSurface(button) });
       setTimeout(() => { button.textContent = original; }, 1200);
     });
   }
@@ -247,6 +289,7 @@
       const resultLabel = card.querySelector('[data-result-label]');
       const count = card.querySelector('[data-count]');
       let mode = card.dataset.defaultMode || 'text-to-morse';
+      let translatorTracked = false;
 
       function setMode(next) {
         mode = next;
@@ -259,6 +302,9 @@
 
       function update() {
         const value = input.value;
+        if (!translatorTracked && value.trim().length >= 2) {
+          translatorTracked = trackEvent('translator_use', { conversion_mode: mode, tool_surface: card.id || 'translator' });
+        }
         if (count) count.textContent = `${value.length} / ${input.maxLength || 1200}`;
         error.hidden = true;
         if (!value.trim()) {
@@ -289,11 +335,15 @@
       });
       card.querySelector('[data-play]')?.addEventListener('click', () => {
         const code = mode === 'text-to-morse' ? output.textContent : input.value;
+        trackEvent('tool_play', { tool_surface: card.id || 'translator' });
         playMorse(code, { scope: output, mode, card });
       });
       card.querySelector('[data-download]')?.addEventListener('click', () => {
         const text = output.textContent.trim();
-        if (text) downloadBlob(new Blob([text], { type: 'text/plain' }), 'morse-code.txt');
+        if (text) {
+          trackEvent('tool_download', { file_type: 'text', tool_surface: card.id || 'translator' });
+          downloadBlob(new Blob([text], { type: 'text/plain' }), 'morse-code.txt');
+        }
       });
       card.querySelectorAll('[data-example]').forEach((button) => button.addEventListener('click', () => {
         input.value = button.dataset.example;
@@ -310,9 +360,15 @@
       const copyButton = event.target.closest('[data-copy-value]');
       if (copyButton) copyText(copyButton.dataset.copyValue, copyButton);
       const playButton = event.target.closest('[data-play-morse]');
-      if (playButton) playMorse(playButton.dataset.playMorse, { card: playButton.closest('.tool-card, .section, .answer-card') });
+      if (playButton) {
+        trackEvent('tool_play', { tool_surface: analyticsSurface(playButton) });
+        playMorse(playButton.dataset.playMorse, { card: playButton.closest('.tool-card, .section, .answer-card') });
+      }
       const printButton = event.target.closest('[data-print-page]');
-      if (printButton) window.print();
+      if (printButton) {
+        trackEvent('print_chart', { tool_surface: analyticsSurface(printButton) });
+        window.print();
+      }
     });
   }
 
@@ -357,10 +413,16 @@
     input.addEventListener('input', update);
     wpm.addEventListener('input', update);
     tone.addEventListener('input', update);
-    tool.querySelector('[data-sound-play]')?.addEventListener('click', playLoop);
+    tool.querySelector('[data-sound-play]')?.addEventListener('click', () => {
+      trackEvent('tool_play', { tool_surface: 'sound-player' });
+      playLoop();
+    });
     tool.querySelector('[data-sound-stop]')?.addEventListener('click', () => { stopPlayback = true; progress.style.width = '0%'; });
     tool.querySelector('[data-sound-copy]')?.addEventListener('click', (event) => copyText(output.textContent, event.currentTarget));
-    tool.querySelector('[data-sound-download]')?.addEventListener('click', () => downloadBlob(makeWavBlob(output.textContent, wpm.value, tone.value), 'morse-code.wav'));
+    tool.querySelector('[data-sound-download]')?.addEventListener('click', () => {
+      trackEvent('tool_download', { file_type: 'wav', tool_surface: 'sound-player' });
+      downloadBlob(makeWavBlob(output.textContent, wpm.value, tone.value), 'morse-code.wav');
+    });
     update();
   }
 
@@ -417,7 +479,10 @@
       }
       updateScore();
       if (count < 10) setTimeout(nextQuestion, 850);
-      else feedback.textContent += ' Round complete.';
+      else {
+        feedback.textContent += ' Round complete.';
+        trackEvent('practice_complete', { practice_mode: mode, practice_score: score });
+      }
     });
 
     tool.querySelectorAll('[data-practice-mode]').forEach((button) => button.addEventListener('click', () => {
@@ -425,7 +490,10 @@
       tool.querySelectorAll('[data-practice-mode]').forEach((item) => item.classList.toggle('active', item === button));
       nextQuestion();
     }));
-    tool.querySelector('[data-practice-play]')?.addEventListener('click', () => playMorse(MORSE[current], { wpm: wpm.value, card: tool }));
+    tool.querySelector('[data-practice-play]')?.addEventListener('click', () => {
+      trackEvent('tool_play', { tool_surface: 'practice-trainer' });
+      playMorse(MORSE[current], { wpm: wpm.value, card: tool });
+    });
     tool.querySelector('[data-practice-reset]')?.addEventListener('click', () => {
       score = 0; count = 0; streak = 0; updateScore(); nextQuestion();
     });
@@ -450,7 +518,8 @@
       current: '',
       isDown: false,
       pressStart: 0,
-      lastRelease: 0
+      lastRelease: 0,
+      tracked: false
     };
 
     function unit() {
@@ -518,6 +587,9 @@
       if (state.isDown) return;
       const now = performance.now();
       applyPauseGap(now);
+      if (!state.tracked) {
+        state.tracked = trackEvent('morse_key_use', { tool_surface: 'morse-key' });
+      }
       state.isDown = true;
       state.pressStart = now;
       keyButton.setAttribute('aria-pressed', 'true');
@@ -691,6 +763,7 @@
     });
   }
 
+  initConsent();
   initTheme();
   initEmailLinks();
   initConverters();

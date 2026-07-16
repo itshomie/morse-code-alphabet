@@ -104,7 +104,7 @@ export const pageMeta = {
   },
   '/privacy-policy/': {
     title: 'Privacy Policy',
-    description: 'Read how Morse Code Alphabet handles contact messages and browser-based tool use.'
+    description: 'Read how Morse Code Alphabet handles browser tools, optional analytics, cookies, advertising, contact messages, and privacy choices.'
   },
   '/terms/': {
     title: 'Terms of Use',

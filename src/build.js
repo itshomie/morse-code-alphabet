@@ -26,10 +26,26 @@ const stylesheetHref = `/assets/styles.css?v=${assetVersion}`;
 const appScriptHref = `/assets/app.js?v=${assetVersion}`;
 const siteLastModified = '2026-07-04';
 const googleAnalyticsId = 'G-364L3NYKST';
+const configuredPublisherId = (process.env.ADSENSE_PUBLISHER_ID || '').trim().replace(/^ca-/, '');
+if (configuredPublisherId && !/^pub-\d{16}$/.test(configuredPublisherId)) {
+  throw new Error('ADSENSE_PUBLISHER_ID must use the format pub-0000000000000000.');
+}
+const adsenseVerificationTag = configuredPublisherId
+  ? `<meta name="google-adsense-account" content="ca-${configuredPublisherId}">`
+  : '';
 const analyticsCode = transformSync(`
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
+  gtag('consent', 'default', {
+    analytics_storage: 'denied',
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    functionality_storage: 'granted',
+    security_storage: 'granted'
+  });
   (() => {
+    const consentKey = 'mca-analytics-consent';
     let loaded = false;
     const loadAnalytics = () => {
       if (loaded) return;
@@ -41,12 +57,22 @@ const analyticsCode = transformSync(`
       gtag('js', new Date());
       gtag('config', '${googleAnalyticsId}');
     };
-    const earlyEvents = ['pointerdown', 'keydown'];
-    earlyEvents.forEach((name) => window.addEventListener(name, loadAnalytics, { once: true, passive: true }));
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') loadAnalytics();
-    }, { once: true });
-    window.addEventListener('load', () => window.setTimeout(loadAnalytics, 4200), { once: true });
+    const readChoice = () => {
+      try { return localStorage.getItem(consentKey); } catch { return null; }
+    };
+    window.mcaSetAnalyticsConsent = (choice) => {
+      const granted = choice === 'granted';
+      try { localStorage.setItem(consentKey, granted ? 'granted' : 'denied'); } catch {}
+      window.mcaAnalyticsEnabled = granted;
+      gtag('consent', 'update', { analytics_storage: granted ? 'granted' : 'denied' });
+      if (granted) loadAnalytics();
+    };
+    const storedChoice = readChoice();
+    window.mcaAnalyticsEnabled = storedChoice === 'granted';
+    if (window.mcaAnalyticsEnabled) {
+      gtag('consent', 'update', { analytics_storage: 'granted' });
+      loadAnalytics();
+    }
   })();
 `, { loader: 'js', minify: true, target: 'es2019', legalComments: 'none' }).code.trim();
 const analyticsTag = `<script>${analyticsCode}</script>`;
@@ -159,6 +185,10 @@ const criticalCss = transformSync(`
   .swap-button::before { content: "<>"; font-size: 1.05rem; font-weight: 900; letter-spacing: 0; }
   .conversion-arrow { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line)); border-radius: 999px; background: var(--accent-soft); color: var(--accent-dark); font-size: 1.2rem; font-weight: 900; }
   .direction-link { white-space: nowrap; }
+  .consent-banner { position: fixed; z-index: 40; right: 18px; bottom: 18px; left: 18px; display: flex; align-items: center; justify-content: space-between; gap: 22px; width: min(920px, calc(100% - 36px)); margin: 0 auto; padding: 18px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); box-shadow: 0 22px 70px rgba(6, 22, 63, 0.24); }
+  .consent-banner p { margin: 4px 0; color: var(--muted); font-size: 0.92rem; }
+  .consent-banner a { color: var(--accent); font-size: 0.88rem; font-weight: 760; text-decoration: underline; }
+  .consent-actions { display: flex; flex: 0 0 auto; gap: 10px; }
   @media (max-width: 860px) {
     main { width: min(100% - 24px, 720px); }
     .site-header { grid-template-columns: 1fr auto; gap: 12px; padding: 12px; }
@@ -174,6 +204,8 @@ const criticalCss = transformSync(`
     .segmented { margin-top: 14px; width: 100%; }
     .swap-button { justify-self: center; transform: rotate(90deg); }
     .conversion-arrow { justify-self: center; transform: rotate(90deg); }
+    .consent-banner { align-items: stretch; flex-direction: column; gap: 14px; }
+    .consent-actions .button { flex: 1 1 0; }
   }
   @media (max-width: 520px) {
     body { background: var(--bg); }
@@ -363,6 +395,7 @@ function layout(page, body, extraJsonLd = []) {
   ${canonicalUrl ? `<meta property="og:url" content="${canonicalUrl}">` : ''}
   <meta property="og:site_name" content="${SITE.name}">
   <meta name="twitter:card" content="summary">
+  ${adsenseVerificationTag}
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="${stylesheetHref}" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <style>${criticalCss}</style>
@@ -415,9 +448,21 @@ function layout(page, body, extraJsonLd = []) {
         { href: '/sources/', label: 'Sources' },
         { href: '/sitemap/', label: 'Sitemap' }
       ])}
+      <button class="footer-choice" type="button" data-privacy-choices>Privacy choices</button>
     </div>
     <p class="footer-line">© 2026 ${SITE.name}. Contact: ${emailAnchor()}</p>
   </footer>
+  <aside class="consent-banner" data-consent-banner hidden aria-labelledby="consent-title" aria-describedby="consent-copy">
+    <div>
+      <strong id="consent-title">Optional analytics</strong>
+      <p id="consent-copy">We use Google Analytics only with your permission to understand which Morse tools are useful. Tool text stays in your browser.</p>
+      <a href="/privacy-policy/">Read the privacy policy</a>
+    </div>
+    <div class="consent-actions">
+      <button class="button ghost" type="button" data-consent-decline>Decline</button>
+      <button class="button primary" type="button" data-consent-accept>Allow analytics</button>
+    </div>
+  </aside>
   <script src="${appScriptHref}" defer></script>
 </body>
 </html>`;
@@ -1083,8 +1128,8 @@ function meaningPage(page) {
     </section>
     ${related([
       { href: '/morse-code-alphabet/', label: 'Morse Code Alphabet', desc: 'See every character.' },
-      { href: '/international-morse-code/', label: 'International Morse Code', desc: 'Review standard signs.' },
-      { href: '/learn-morse-code/', label: 'Learn Morse Code', desc: 'Start practicing.' }
+      { href: '/english-to-morse/', label: 'English to Morse', desc: 'Turn a message into dots and dashes.' },
+      { href: '/morse-code-practice/', label: 'Morse Code Practice', desc: 'Practice reading and listening.' }
     ])}
     ${faq([
       { q: 'Is Morse code a language?', a: 'It is better described as an encoding system. It can represent text from a language, but it is not a full spoken language by itself.' },
@@ -1370,14 +1415,28 @@ function legalPage(page, kind) {
     ${hero(page, isPrivacy ? 'This policy explains the limited information involved when you use the tools or contact us.' : 'These terms explain acceptable use of the tools, references, and learning materials.')}
     <section class="section prose">
       ${isPrivacy ? `
+        <p><strong>Last updated:</strong> July 16, 2026</p>
+        <h2>Scope</h2>
+        <p>This policy explains how Morse Code Alphabet handles information when you use this website, its browser-based tools, optional analytics, or email support.</p>
         <h2>Tool Use</h2>
         <p>Converters, sound playback, alphabet buttons, and practice interactions run in your browser. The text you type into these tools is not submitted by the tool itself.</p>
         <h2>Contact Messages</h2>
         <p>If you email ${emailInline()}, your email address and message are used to read and respond to that message.</p>
         <h2>Local Preferences</h2>
-        <p>The color theme may be stored in your browser so the page can remember your preference.</p>
-        <h2>Analytics</h2>
-        <p>Google Analytics may collect basic usage information such as page views and browser details. Text entered into the Morse tools is not sent by the tools for analytics.</p>
+        <p>The color theme and your analytics choice may be stored in your browser. These settings are used to remember your preferences and are not the text you enter into the tools.</p>
+        <h2>Optional Google Analytics</h2>
+        <p>If you allow analytics, Google Analytics may receive page URLs, referrers, approximate location derived from an IP address, device and browser details, and privacy-safe interaction events such as using a translator, play, copy, download, print, or completing a practice round. Tool input and decoded messages are never included in these events.</p>
+        <p>Analytics storage is denied by default. You can allow, decline, or change this choice at any time. Google may process this information under its own terms and privacy policy.</p>
+        <p><button class="button secondary" type="button" data-privacy-choices>Review privacy choices</button></p>
+        <h2>Advertising and Third-Party Cookies</h2>
+        <p>If Google AdSense advertising is enabled, Google and its advertising partners may place or read cookies, use web beacons, collect IP addresses, or use other identifiers to serve, limit, personalize, and measure ads. Third parties may also place or read cookies on your browser when ads are served.</p>
+        <p>Where required, advertising cookies and personalized ads will use a consent message. Learn more about <a href="https://policies.google.com/technologies/partner-sites" rel="noopener noreferrer">how Google uses information from sites that use its services</a> and manage Google ad controls in <a href="https://myadcenter.google.com/" rel="noopener noreferrer">My Ad Center</a>.</p>
+        <h2>Data Sharing and Sensitive Information</h2>
+        <p>We do not intentionally send names, email addresses, tool text, precise location, or other directly identifying information to Google Analytics or advertising requests. Do not place personal information in a page URL.</p>
+        <h2>Children</h2>
+        <p>This is a general-audience educational website and is not directed to children under 13. The tools do not ask for a child's name, age, school, or contact information.</p>
+        <h2>Your Choices</h2>
+        <p>You can decline optional analytics, clear site data in your browser, use browser privacy controls, or contact us about a privacy question. Declining analytics does not block the Morse tools.</p>
         <h2>Questions</h2>
         <p>For privacy questions, email ${emailAnchor()}.</p>
       ` : `
@@ -1454,19 +1513,20 @@ function notFoundPage() {
 
 const basePages = [
   { route: '/', h1: 'Morse Code', navLabel: 'Home', meta: pageMeta['/'], updatedAt: '2026-07-10', render: homePage, faq: commonFaq },
-  { route: '/morse-code-alphabet/', h1: 'Morse Code Alphabet Chart', navLabel: 'Morse Code Alphabet', meta: pageMeta['/morse-code-alphabet/'], updatedAt: '2026-07-10', render: alphabetPage },
+  { route: '/morse-code-alphabet/', h1: 'Morse Code Alphabet Chart', navLabel: 'Morse Code Alphabet', meta: pageMeta['/morse-code-alphabet/'], updatedAt: '2026-07-16', render: alphabetPage },
   { route: '/morse-code-decoder/', h1: 'Morse Code Decoder', navLabel: 'Morse Code Decoder', meta: pageMeta['/morse-code-decoder/'], updatedAt: '2026-07-10', render: (page) => toolPage(page, 'morse-to-text') },
-  { route: '/english-to-morse/', h1: 'English to Morse Code Translator', navLabel: 'English to Morse', meta: pageMeta['/english-to-morse/'], updatedAt: '2026-07-10', render: (page) => toolPage(page, 'text-to-morse') },
+  { route: '/english-to-morse/', h1: 'English to Morse Code Translator', navLabel: 'English to Morse', meta: pageMeta['/english-to-morse/'], updatedAt: '2026-07-16', render: (page) => toolPage(page, 'text-to-morse') },
   { route: '/learn-morse-code/', h1: 'Learn Morse Code', navLabel: 'Learn Morse Code', meta: pageMeta['/learn-morse-code/'], render: learnPage },
-  { route: '/morse-code-practice/', h1: 'Morse Code Practice', navLabel: 'Morse Code Practice', meta: pageMeta['/morse-code-practice/'], updatedAt: '2026-07-10', render: practicePage },
-  { route: '/morse-code-meaning/', h1: 'What Is Morse Code?', navLabel: 'What Is Morse Code?', meta: pageMeta['/morse-code-meaning/'], updatedAt: '2026-07-10', render: meaningPage },
+  { route: '/morse-code-practice/', h1: 'Morse Code Practice', navLabel: 'Morse Code Practice', meta: pageMeta['/morse-code-practice/'], updatedAt: '2026-07-16', render: practicePage },
+  { route: '/morse-code-meaning/', h1: 'What Is Morse Code?', navLabel: 'What Is Morse Code?', meta: pageMeta['/morse-code-meaning/'], updatedAt: '2026-07-16', render: meaningPage },
   { route: '/international-morse-code/', h1: 'International Morse Code', navLabel: 'International Morse Code', meta: pageMeta['/international-morse-code/'], updatedAt: '2026-07-10', render: internationalPage },
   { route: '/morse-code-sounds/', h1: 'Morse Code Sounds', navLabel: 'Morse Code Sounds', meta: pageMeta['/morse-code-sounds/'], render: soundsPage },
-  { route: '/about/', h1: 'About Morse Code Alphabet', navLabel: 'About', meta: pageMeta['/about/'], indexable: false, render: (page) => simplePage(page, {
+  { route: '/about/', h1: 'About Morse Code Alphabet', navLabel: 'About', meta: pageMeta['/about/'], indexable: false, updatedAt: '2026-07-16', render: (page) => simplePage(page, {
     intro: 'Morse Code Alphabet brings together practical Morse conversion, sound playback, reference tables, and practice tools.',
     sections: [
+      { title: 'Who Runs This Site', body: `<p>Morse Code Alphabet is an independent educational website operated under the Morse Code Alphabet name. Questions and corrections reach the site operator at ${emailAnchor()}.</p>` },
       { title: 'What You Can Do Here', body: '<p>Convert English to Morse, decode Morse to English, play dot-and-dash sounds, browse the alphabet, and practice recognition.</p>' },
-      { title: 'Reference Approach', body: '<p>Character tables and timing notes are based on recognized Morse code references and are written for clear everyday use.</p>' },
+      { title: 'Reference and Review Approach', body: '<p>Character tables and timing notes are checked against recognized Morse code references. Explanations, examples, and browser tools are reviewed together so that the written pattern, timing, and generated output stay consistent.</p>' },
       { title: 'Feedback', body: `<p>Corrections and accessibility notes can be sent to ${emailAnchor()}.</p>` }
     ]
   }) },
@@ -1477,7 +1537,7 @@ const basePages = [
       { title: 'Helpful Details', body: '<p>If you found a character or tool issue, include the page URL and what you were checking.</p>' }
     ]
   }) },
-  { route: '/privacy-policy/', h1: 'Privacy Policy', navLabel: 'Privacy Policy', meta: pageMeta['/privacy-policy/'], indexable: false, render: (page) => legalPage(page, 'privacy') },
+  { route: '/privacy-policy/', h1: 'Privacy Policy', navLabel: 'Privacy Policy', meta: pageMeta['/privacy-policy/'], indexable: false, updatedAt: '2026-07-16', render: (page) => legalPage(page, 'privacy') },
   { route: '/terms/', h1: 'Terms of Use', navLabel: 'Terms', meta: pageMeta['/terms/'], indexable: false, render: (page) => legalPage(page, 'terms') },
   { route: '/sources/', h1: 'Morse Code Sources', navLabel: 'Sources', meta: pageMeta['/sources/'], indexable: false, render: sourcesPage },
   { route: '/sitemap/', h1: 'Sitemap', navLabel: 'Sitemap', meta: pageMeta['/sitemap/'], indexable: false, render: sitemapPage }
@@ -1550,6 +1610,9 @@ function writeRobotsAndSitemaps() {
   fs.writeFileSync(path.join(dist, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);
   fs.writeFileSync(path.join(dist, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE.url}/sitemap.xml\n`);
   fs.writeFileSync(path.join(dist, 'llms.txt'), llmsText());
+  if (configuredPublisherId) {
+    fs.writeFileSync(path.join(dist, 'ads.txt'), `google.com, ${configuredPublisherId}, DIRECT, f08c47fec0942fa0\n`);
+  }
   fs.writeFileSync(path.join(dist, '_headers'), `/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: microphone=(), camera=(), geolocation=()\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n/favicon.svg\n  Cache-Control: public, max-age=604800\n/llms.txt\n  Content-Type: text/plain; charset=utf-8\n  Cache-Control: public, max-age=3600\n`);
   fs.writeFileSync(path.join(dist, '_redirects'), [
     '/morse-decoder/ /morse-code-decoder/ 301',
